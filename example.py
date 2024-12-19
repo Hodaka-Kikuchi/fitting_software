@@ -36,7 +36,16 @@ class FittingToolApp:
 
         # UI要素の初期化
         self.init_ui()
-
+        
+    def toggle_entry_state(self):
+        # チェックボックスがオンかオフかによってエントリの状態を変更
+        for i, check_var in enumerate(self.checkboxes):
+            for j in range(3):
+                if check_var.get():
+                    self.entries[i][j].config(state="normal")  # チェックされていればエントリを有効化
+                else:
+                    self.entries[i][j].config(state="readonly")  # チェックが外れていればエントリを無効化
+                    
     def init_ui(self):
         # ファイル選択ボタン
         self.file_button = ttk.Button(self.root, text="Load CSV", command=self.load_csv)
@@ -45,14 +54,17 @@ class FittingToolApp:
         # グラフ表示用キャンバス
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvasTkAgg(self.figure, master=self.root)
-        self.canvas.get_tk_widget().grid(row=1, column=0, columnspan=4, padx=10, pady=10)
+        self.canvas.get_tk_widget().grid(row=1, column=0, columnspan=7, padx=10, pady=10)
 
         # エントリーボックスの作成
         self.create_entry_widgets()
 
         # フィットボタン
         self.fit_button = ttk.Button(self.root, text="Fit", command=self.fit_data)
-        self.fit_button.grid(row=2, column=3, padx=10, pady=10)
+        self.fit_button.grid(row=0, column=1, padx=10, pady=10)
+
+        # チェックボックスの初期状態を設定
+        self.toggle_entry_state()
 
     def create_entry_widgets(self):
         self.entries = []
@@ -63,9 +75,9 @@ class FittingToolApp:
 
         # 背景フィット用ラベルとエントリ
         for i, label in enumerate(self.bg_labels):
-            ttk.Label(self.root, text=label).grid(row=2 + i, column=0, padx=5, pady=5)
+            ttk.Label(self.root, text=label).grid(row=2, column=i, padx=5, pady=5)
             entry = ttk.Entry(self.root, textvariable=self.bg_params[i], width=10)
-            entry.grid(row=2 + i, column=1, padx=5, pady=5)
+            entry.grid(row=3, column=i, padx=5, pady=5)
 
         # エントリーボックスとラベル
         ttk.Label(self.root, text="Area").grid(row=5, column=1)
@@ -74,12 +86,16 @@ class FittingToolApp:
         ttk.Label(self.root, text="Error (Area)").grid(row=5, column=4)
         ttk.Label(self.root, text="Error (Center)").grid(row=5, column=5)
         ttk.Label(self.root, text="Error (FWHM)").grid(row=5, column=6)
-
+        
+        # チェックボックスの作成
         for i in range(10):
-            check_var = tk.BooleanVar(value=False)
+            check_var = tk.BooleanVar(value=True)
             checkbox = ttk.Checkbutton(self.root, variable=check_var, command=self.toggle_entry_state)
             checkbox.grid(row=6 + i, column=0, padx=5, pady=5)
             self.checkboxes.append(check_var)
+            
+        # 初期値入力ボックスの作成
+        for i in range(10):
 
             row_entries = []
             row_errors = []
@@ -89,13 +105,21 @@ class FittingToolApp:
                 entry.grid(row=6 + i, column=1 + j, padx=5, pady=5)
                 row_entries.append(entry)
 
+            self.entries.append(row_entries)
+        
+        # 誤差出力ボックスの作成
+        for i in range(10):
+
+            row_entries = []
+            row_errors = []
+
+            for j in range(3):
                 error_entry = ttk.Entry(self.root, width=10, state="readonly")
                 error_entry.grid(row=6 + i, column=4 + j, padx=5, pady=5)
                 row_errors.append(error_entry)
 
-            self.entries.append(row_entries)
             self.error_entries.append(row_errors)
-
+            
     def toggle_entry_state(self):
         for i, check_var in enumerate(self.checkboxes):
             state = "normal" if not check_var.get() else "disabled"
@@ -173,6 +197,8 @@ class FittingToolApp:
 
         except Exception as e:
             messagebox.showerror("Error", f"Fitting failed: {e}")
+
+    
 
 # アプリ起動
 root = tk.Tk()
