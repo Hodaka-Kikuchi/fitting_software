@@ -132,12 +132,15 @@ class FittingToolApp:
             return
 
         try:
+            # CSVファイルを読み込む (1列目と2列目はx_data, y_data、3列目はy_error)
             data = np.loadtxt(file_path, delimiter=",", skiprows=1)
-            self.x_data = data[:, 0]
-            self.y_data = data[:, 1]
+            self.x_data = data[:, 0]  # 1列目がxデータ
+            self.y_data = data[:, 1]  # 2列目がyデータ
+            self.y_error = data[:, 2]  # 3列目がyエラーバーのデータ
 
+            # プロットを更新
             self.ax.clear()
-            self.ax.plot(self.x_data, self.y_data, label="Data")
+            self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars")
             self.ax.legend()
             self.canvas.draw()
 
