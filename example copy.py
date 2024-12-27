@@ -66,6 +66,7 @@ class FittingTool:
 
     def create_entry_widgets(self):
         self.entries = []
+        self.bg_entries = []
         self.error_entries = []
 
         # バックグラウンド項 (定数, 1次, 2次)
@@ -74,7 +75,7 @@ class FittingTool:
 
         for i, label in enumerate(self.bg_labels):
             ttk.Label(self.root, text=label).grid(row=2, column=1+i, padx=5, pady=5)
-            bg_entry = ttk.Entry(self.root, textvariable=self.bg_params[i], width=10)
+            bg_entry = ttk.Entry(self.root, width=10)
             bg_entry.grid(row=3, column=1+i, padx=5, pady=5)
             self.bg_entries.append(bg_entry)  # エントリボックスをリストに追加
         for i, label in enumerate(self.bg_err_labels):
@@ -145,11 +146,9 @@ class FittingTool:
 
     def fit_data(self):
         # バックグラウンドパラメータの取得と処理
-        bg_a = self.bg_params[0].get()
-        
-        print(bg_a)
-        bg_b = self.bg_params[1].get()
-        bg_c = self.bg_params[2].get()
+        bg_a = self.bg_entries[0].get()
+        bg_b = self.bg_entries[1].get()
+        bg_c = self.bg_entries[2].get()
 
         # バックグラウンドパラメータの 'c' を取り除く処理
         bg_a_value, bg_a_fixed = self.process_param(bg_a)
