@@ -345,6 +345,7 @@ class FittingTool:
             # 元データ
             x_data = self.x_data
             y_data = self.y_data
+            yerr_data = self.y_error
 
             # フィッティング曲線の計算
             y_fit = self.calculate_fit_curve(x_data, fit_params)
@@ -373,13 +374,13 @@ class FittingTool:
                 writer.writerow([])
 
                 # データヘッダを書き込み
-                header = ['x_data', 'y_data', 'y_fit', 'y_bg']
+                header = ['x_data', 'y_data', 'yerr_data' , 'y_fit', 'y_bg']
                 header += [f'gaussian_{i+1}' for i in range(len(gaussian_curves))]
                 writer.writerow(header)
 
                 # データを行ごとに書き込み
                 for i, x in enumerate(x_data):
-                    row = [x, y_data[i], y_fit[i], y_bg[i]]
+                    row = [x, y_data[i], yerr_data[i], y_fit[i], y_bg[i]]
                     row += [gaussian[i] for gaussian in gaussian_curves]
                     writer.writerow(row)
 
