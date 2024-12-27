@@ -164,27 +164,52 @@ class FittingToolApp:
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load CSV file: {e}")
-
+    
     def fit_data(self):
         initial_params = []
         bounds = [[], []]
+        fixed_indices = []  # 固定パラメータのインデックス
+        fixed_values = []   # 固定パラメータの値
 
         # バックグラウンドパラメータの初期値と境界を設定
-        for param in self.bg_params:
-            initial_params.append(param.get())
-            bounds[0].append(-np.inf)
-            bounds[1].append(np.inf)
+        for i, param_var in enumerate(self.bg_params):
+            value_str = str(param_var.get())
+            if value_str.endswith("c"):  # 値が固定されている場合
+                fixed_value = float(value_str.rstrip("c"))  # 数値部分を抽出
+                fixed_indices.append(len(initial_params))
+                fixed_values.append(fixed_value)
+                initial_params.append(fixed_value)  # 初期値に固定値を設定
+                bounds[0].append(fixed_value)
+                bounds[1].append(fixed_value)
+            else:
+                value = float(value_str)
+                initial_params.append(value)
+                bounds[0].append(-np.inf)
+                bounds[1].append(np.inf)
 
         # ガウシアンピークの初期値と境界を設定
         for i, row_entries in enumerate(self.entries):
             if self.checkboxes[i].get():
-                continue
+                continue  # 無効化されているエントリはスキップ
 
             try:
-                params = [float(entry.get()) for entry in row_entries]
-                initial_params.extend(params)
-                bounds[0].extend([0, -np.inf, 0])  # Area >= 0, Center unrestricted, FWHM > 0
-                bounds[1].extend([np.inf, np.inf, np.inf])
+                for j, entry in enumerate(row_entries):
+                    value_str = entry.get()
+                    if value_str.endswith("c"):  # 値が固定されている場合
+                        fixed_value = float(value_str.rstrip("c"))
+                        fixed_indices.append(len(initial_params))
+                        fixed_values.append(fixed_value)
+                        initial_params.append(fixed_value)  # 初期値に固定値を設定
+                        bounds[0].append(fixed_value)
+                        bounds[1].append(fixed_value)
+                    else:
+                        value = float(value_str)
+                        initial_params.append(value)
+                        if j == 0:  # Amplitude >= 0
+                            bounds[0].append(0)
+                        else:
+                            bounds[0].append(-np.inf)
+                        bounds[1].append(np.inf)
             except ValueError:
                 messagebox.showerror("Error", f"Invalid initial values in row {i + 1}")
                 return
@@ -195,6 +220,10 @@ class FittingToolApp:
                 combined_function, self.x_data, self.y_data,
                 p0=initial_params, bounds=bounds
             )
+
+            # 固定パラメータを結果に統合
+            for idx, value in zip(fixed_indices, fixed_values):
+                popt[idx] = value
 
             # 結果を self に保存
             self.popt = popt
@@ -217,15 +246,15 @@ class FittingToolApp:
             # バックグラウンド成分を破線でプロット
             background_curve = background(self.x_data, *bg_params)
             self.ax.plot(self.x_data, background_curve, 'r--', label="Background")
-            
+
             # 背景パラメータをUIに反映
             for i, param_var in enumerate(self.bg_params):
-                param_var.set(f"{popt[i]:.4f}")  # フィッティング結果をDoubleVarに設定
+                param_var.set(f"{popt[i]:.4f}")
 
             # 背景パラメータの誤差をUIに反映
             for i, error_var in enumerate(self.err_bg_params):
                 error = np.sqrt(np.diag(pcov))[i]
-                error_var.set(f"{error:.4f}")  # 誤差をDoubleVarに設定
+                error_var.set(f"{error:.4f}")
 
             # 各ガウシアンを破線でプロット
             for i in range(num_peaks):
@@ -236,7 +265,7 @@ class FittingToolApp:
             # 凡例と描画更新
             self.ax.legend()
             self.canvas.draw()
-            
+
             # 結果をUIに反映
             for i, row_entries in enumerate(self.entries):
                 if self.checkboxes[i].get():
@@ -257,6 +286,7 @@ class FittingToolApp:
             return popt, pcov
         except Exception as e:
             messagebox.showerror("Error", f"Fitting failed: {e}")
+
 
     def save_fitting_results(self):
         # フィッティング結果が存在するか確認
