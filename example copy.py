@@ -1,88 +1,47 @@
+from lmfit import Minimizer, Parameters, report_fit
 import numpy as np
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import lmfit
-import csv
 
-# ガウシアン関数
-def gaussian(x, amplitude, center, fwhm):
-    return amplitude * np.exp(-4 * np.log(2) * ((x - center) / fwhm) ** 2)
-
-# バックグラウンド（定数、1次、2次）
-def background(x, a0, a1, a2):
-    return a0 + a1 * x + a2 * x ** 2
-
-# ガウシアン + バックグラウンド
-def combined_function(x, params):
-    bg_params = [params['bg_param_0'], params['bg_param_1'], params['bg_param_2']]
-    peaks = 0
-    num_peaks = (len(params) - 3) // 3  # ガウシアンの数
-    for i in range(num_peaks):
-        amplitude = params[f'peak_param_{i*3}']
-        center = params[f'peak_param_{i*3 + 1}']
-        fwhm = params[f'peak_param_{i*3 + 2}']
-        peaks += gaussian(x, amplitude, center, fwhm)
-    bg = background(x, *bg_params)
-    return bg + peaks
-
-class FittingToolApp:
+class FittingTool:
     def __init__(self, root):
         self.root = root
         self.root.title("Fitting Tool")
-
+        
+        # UI要素の初期化
         self.init_ui()
 
-    def toggle_entry_state(self):
-        for i, check_var in enumerate(self.checkboxes):
-            state = "normal" if check_var.get() else "readonly"
-            for entry in self.entries[i]:
-                entry.config(state=state)
-
     def init_ui(self):
+        # ファイル選択ボタン
         self.file_button = ttk.Button(self.root, text="Load CSV", command=self.load_csv)
         self.file_button.grid(row=0, column=0, padx=10, pady=10)
 
+        # グラフ表示用キャンバス
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvasTkAgg(self.figure, master=self.root)
         self.canvas.get_tk_widget().grid(row=1, column=0, columnspan=7, padx=10, pady=10)
 
-        self.create_entry_widgets()
-
+        # フィットボタン
         self.fit_button = ttk.Button(self.root, text="Fit", command=self.fit_data)
         self.fit_button.grid(row=0, column=1, padx=10, pady=10)
 
+        # 保存ボタン
         self.save_button = ttk.Button(self.root, text="Save CSV", command=self.save_fitting_results)
         self.save_button.grid(row=0, column=2, padx=10, pady=10)
 
-    def create_entry_widgets(self):
+        # エントリーボックス作成 (フィッティング用のエントリ)
         self.entries = []
+        self.error_entries = []
         self.checkboxes = []
-        self.bg_params = [tk.DoubleVar(value=0) for _ in range(3)]
+        self.bg_params = [tk.DoubleVar(value=0) for _ in range(3)]  # バックグラウンドパラメータ
         self.bg_labels = ["Constant", "Linear", "Quadratic"]
-
-        # バックグラウンドフィット用ラベルとエントリ
-        for i, label in enumerate(self.bg_labels):
-            ttk.Label(self.root, text=label).grid(row=2, column=1+i, padx=5, pady=5)
-            bg_entry = ttk.Entry(self.root, textvariable=self.bg_params[i], width=10)
-            bg_entry.grid(row=3, column=1+i, padx=5, pady=5)
-
-        # チェックボックスの作成
-        for i in range(10):
-            check_var = tk.BooleanVar(value=True)
-            checkbox = ttk.Checkbutton(self.root, variable=check_var, command=self.toggle_entry_state)
-            checkbox.grid(row=6 + i, column=0, padx=5, pady=5)
-            self.checkboxes.append(check_var)
-
-        # 初期値入力ボックスの作成
-        for i in range(10):
-            row_entries = []
-            for j in range(3):
-                entry = ttk.Entry(self.root, width=10)
-                entry.grid(row=6 + i, column=1 + j, padx=5, pady=5)
-                row_entries.append(entry)
-            self.entries.append(row_entries)
+        self.bg_err_labels = ["Error(Constant)", "Error(Linear)", "Error(Quadratic)"]
+        self.create_entry_widgets()
+        
+        # チェックボックスの初期状態を設定
+        self.toggle_entry_state()  # ここで最初に呼び出す
 
     def load_csv(self):
         file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
@@ -90,11 +49,13 @@ class FittingToolApp:
             return
 
         try:
+            # CSVファイルを読み込む
             data = np.loadtxt(file_path, delimiter=",", skiprows=1)
             self.x_data = data[:, 0]
             self.y_data = data[:, 1]
             self.y_error = data[:, 2]
 
+            # プロットを更新
             self.ax.clear()
             self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars")
             self.ax.legend()
@@ -103,98 +64,252 @@ class FittingToolApp:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load CSV file: {e}")
 
+    def create_entry_widgets(self):
+        self.entries = []
+        self.error_entries = []
+
+        # バックグラウンド項 (定数, 1次, 2次)
+        self.bg_entries = []  # バックグラウンドのエントリボックス
+        self.bg_errors = []   # バックグラウンドの誤差表示用エントリボックス
+
+        for i, label in enumerate(self.bg_labels):
+            ttk.Label(self.root, text=label).grid(row=2, column=1+i, padx=5, pady=5)
+            bg_entry = ttk.Entry(self.root, textvariable=self.bg_params[i], width=10)
+            bg_entry.grid(row=3, column=1+i, padx=5, pady=5)
+            self.bg_entries.append(bg_entry)  # エントリボックスをリストに追加
+        for i, label in enumerate(self.bg_err_labels):
+            ttk.Label(self.root, text=label).grid(row=2, column=1+i, padx=5, pady=5)
+            bg_error_entry = ttk.Entry(self.root, width=10, state="readonly")
+            bg_error_entry.grid(row=3, column=4+i, padx=5, pady=5)
+            self.bg_errors.append(bg_error_entry)  # 誤差表示用エントリボックスをリストに追加
+
+        # チェックボックスの作成
+        for i in range(10):  # 最大10個のガウシアン
+            row_entries = []
+            row_errors = []
+
+            # チェックボックス (初期状態でオフ)
+            check_var = tk.BooleanVar(value=False)
+            checkbox = ttk.Checkbutton(self.root, variable=check_var, command=self.toggle_entry_state)
+            checkbox.grid(row=6 + i, column=0, padx=5, pady=5)
+
+            # 各ガウシアンのエントリボックス (Area, Center, FWHM)
+            for j in range(3):
+                entry = ttk.Entry(self.root, width=10)
+                entry.grid(row=6 + i, column=1 + j, padx=5, pady=5)
+                row_entries.append(entry)
+
+            # 各ガウシアンの誤差表示用エントリボックス (readonly)
+            for j in range(3):
+                error_entry = ttk.Entry(self.root, width=10, state="readonly")
+                error_entry.grid(row=6 + i, column=4 + j, padx=5, pady=5)
+                row_errors.append(error_entry)
+
+            self.entries.append(row_entries)
+            self.error_entries.append(row_errors)
+            self.checkboxes.append(check_var)
+
+        # パラメータのラベル
+        ttk.Label(self.root, text="Area").grid(row=5, column=1)
+        ttk.Label(self.root, text="Center").grid(row=5, column=2)
+        ttk.Label(self.root, text="FWHM").grid(row=5, column=3)
+        ttk.Label(self.root, text="Error (Area)").grid(row=5, column=4)
+        ttk.Label(self.root, text="Error (Center)").grid(row=5, column=5)
+        ttk.Label(self.root, text="Error (FWHM)").grid(row=5, column=6)
+
+
+    def toggle_entry_state(self):
+        """ チェックボックスの状態に応じてエントリの有効化・無効化 """
+        for i in range(10):
+            state = "normal" if self.checkboxes[i].get() else "readonly"
+            for entry in self.entries[i]:
+                entry.config(state=state)
+
+    def residual(self, params, x, y, y_err):
+        """ フィット関数の残差計算 """
+        # バックグラウンド項
+        bg_a = params['bg_a']
+        bg_b = params['bg_b']
+        bg_c = params['bg_c']
+        model = bg_a + bg_b * x + bg_c * x**2
+
+        # ガウシアン項
+        for i in range(10):
+            if self.checkboxes[i].get():
+                amp = params[f'amp_{i+1}']
+                cen = params[f'cen_{i+1}']
+                wid = params[f'wid_{i+1}']
+                model += amp * np.exp(-(x - cen)**2 / (2 * wid**2))
+        
+        return (y - model) / y_err  # ノイズを無視するために誤差で割る
+
     def fit_data(self):
-        model_params = lmfit.Parameters()
+        # バックグラウンドパラメータの取得と処理
+        bg_a = self.bg_params[0].get()
+        bg_b = self.bg_params[1].get()
+        bg_c = self.bg_params[2].get()
 
-        for i, param in enumerate(self.bg_params):
-            model_params.add(f'bg_param_{i}', value=param.get())
+        # バックグラウンドパラメータの 'c' を取り除く処理
+        bg_a_value, bg_a_fixed = self.process_param(bg_a)
+        bg_b_value, bg_b_fixed = self.process_param(bg_b)
+        bg_c_value, bg_c_fixed = self.process_param(bg_c)
 
-        # ガウシアンのパラメータ設定
-        for i, row_entries in enumerate(self.entries):
-            if self.checkboxes[i].get():
+        # 各ピークに対するパラメータの取得とフィッティング
+        peak_params = {}
+        for i in range(10):  # 最大10個のピークに対して
+            if self.checkboxes[i].get():  # チェックボックスがオンの場合のみ
+                area = self.entries[i][0].get()
+                center = self.entries[i][1].get()
+                fwhm = self.entries[i][2].get()
+
+                # 'c'がついている場合、固定する処理を追加
+                if isinstance(center, str) and center.endswith("c"):
+                    center_value = float(center[:-1])  # 'c'を取り除いて値を設定
+                    peak_params[f'cen_{i+1}'] = (center_value, True)  # 固定値として設定
+                else:
+                    peak_params[f'cen_{i+1}'] = (float(center), False)
+
+                # 'c'がついている場合、'c'を取り除いて数値として設定
+                amp_value, amp_fixed = self.process_param(area)
+                wid_value, wid_fixed = self.process_param(fwhm)
+
+                # 'c'がついている場合、固定する処理を追加
+                peak_params[f'amp_{i+1}'] = (amp_value, amp_fixed)
+                peak_params[f'wid_{i+1}'] = (wid_value, wid_fixed)
+
+            else:
                 continue
 
-            try:
-                for j, entry in enumerate(row_entries):
-                    value_str = entry.get()
-                    if value_str.endswith("c"):
-                        fixed_value = float(value_str[:-1])
-                        model_params.add(f'peak_param_{i*3 + j}', value=fixed_value, vary=False)
-                    else:
-                        initial_value = float(value_str)
-                        model_params.add(f'peak_param_{i*3 + j}', value=initial_value)
+        # フィットするデータ
+        x_data = self.x_data
+        y_data = self.y_data
+        y_error = self.y_error
 
-            except ValueError:
-                pass  # 無効な値を無視
+        # lmfitの最小化処理
+        pfit = Parameters()
 
-        try:
-            # lmfitでフィッティング
-            fit_result = lmfit.minimize(self.objective_function, model_params, args=(self.x_data, self.y_data, self.y_error))
+        # バックグラウンドパラメータを追加（固定値かどうかをチェック）
+        pfit.add('bg_a', value=bg_a_value, vary=not bg_a_fixed)
+        pfit.add('bg_b', value=bg_b_value, vary=not bg_b_fixed)
+        pfit.add('bg_c', value=bg_c_value, vary=not bg_c_fixed)
 
-            # フィッティング結果を保存
-            popt = [fit_result.params[param].value for param in fit_result.params]
-            self.update_ui_with_results(popt)
+        # ガウシアンのピークパラメータを追加
+        for key, value in peak_params.items():
+            pfit.add(key, value=value[0], vary=not value[1])
 
-            # プロットを更新
-            self.ax.clear()
-            self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars")
-            self.ax.plot(self.x_data, combined_function(self.x_data, fit_result.params), label="Fit")
-            self.ax.legend()
-            self.canvas.draw()
+        # 最小化処理
+        mini = Minimizer(self.residual, pfit, fcn_args=(x_data, y_data, y_error))
+        result = mini.leastsq()
 
-        except Exception as e:
-            messagebox.showerror("Error", f"Fitting failed: {e}")
+        # フィット結果をエントリーボックスに表示
+        self.display_fit_results(result)
 
-    def objective_function(self, params, x, y, yerr):
-        model = combined_function(x, params)
-        return (y - model) / yerr
+    def process_param(self, param):
+        """パラメータの 'c' を処理する関数"""
+        if isinstance(param, str) and param.endswith("c"):
+            value = float(param[:-1])  # 'c'を取り除いて値を設定
+            return value, True  # 固定値として設定
+        else:
+            return float(param), False  # 固定しない値として設定
 
-    def update_ui_with_results(self, popt):
-        # フィッティング結果をUIに反映
-        for i, row_entries in enumerate(self.entries):
+    
+    def plot_fitted_curve(self, x_data, result):
+        """ フィッティング結果をプロットに追加 """
+        # バックグラウンドのフィット
+        bg_a = result.params['bg_a'].value
+        bg_b = result.params['bg_b'].value
+        bg_c = result.params['bg_c'].value
+        y_fit = bg_a + bg_b * x_data + bg_c * x_data**2
+
+        # 各ピークのガウスフィット
+        for i in range(10):
+            if f'cen_{i+1}' in result.params:
+                amp = result.params[f'amp_{i+1}'].value
+                cen = result.params[f'cen_{i+1}'].value
+                wid = result.params[f'wid_{i+1}'].value
+
+                # ガウス曲線を追加
+                y_fit += amp * np.exp(-(x_data - cen)**2 / (2 * (wid / 2.355)**2))
+
+        # グラフを更新
+        self.ax.clear()
+        self.ax.errorbar(x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars")
+        self.ax.plot(x_data, y_fit, label="Fitted curve", color='red')
+        self.ax.legend()
+        self.canvas.draw()
+
+    def display_fit_results(self, result):
+        """ フィット結果をエントリーボックスに表示 """
+        
+        # バックグラウンドパラメータの結果を表示
+        for entry in self.bg_entries:
+            entry.config(state="normal")  # 一時的に "normal" に変更
+        self.bg_entries[0].delete(0, tk.END)
+        self.bg_entries[1].delete(0, tk.END)
+        self.bg_entries[2].delete(0, tk.END)
+        self.bg_entries[0].insert(0, f"{result.params['bg_a'].value:.4f}")
+        self.bg_entries[1].insert(0, f"{result.params['bg_b'].value:.4f}")
+        self.bg_entries[2].insert(0, f"{result.params['bg_c'].value:.4f}")
+
+        # 誤差の表示（readonlyに設定）
+        for entry in self.bg_errors:
+            entry.config(state="normal")  # 一時的に "normal" に変更
+        self.bg_errors[0].delete(0, tk.END)
+        self.bg_errors[1].delete(0, tk.END)
+        self.bg_errors[2].delete(0, tk.END)
+        self.bg_errors[0].insert(0, f"{result.params['bg_a'].stderr:.4f}")
+        self.bg_errors[1].insert(0, f"{result.params['bg_b'].stderr:.4f}")
+        self.bg_errors[2].insert(0, f"{result.params['bg_c'].stderr:.4f}")
+
+        # ガウシアンパラメータの結果を表示
+        for i in range(10):
             if self.checkboxes[i].get():
-                continue
+                # 各ピークの結果をエントリに設定
+                amp = result.params[f'amp_{i+1}'].value
+                cen = result.params[f'cen_{i+1}'].value
+                wid = result.params[f'wid_{i+1}'].value
 
-            base_idx = 3 + i * 3
-            for j, entry in enumerate(row_entries):
-                entry.delete(0, tk.END)
-                entry.insert(0, f"{popt[base_idx + j]:.4f}")
+                # 結果をエントリに設定
+                for entry in self.entries[i]:
+                    entry.config(state="normal")  # 一時的に "normal" に変更
+                self.entries[i][0].delete(0, tk.END)
+                self.entries[i][1].delete(0, tk.END)
+                self.entries[i][2].delete(0, tk.END)
 
+                self.entries[i][0].insert(0, f"{amp:.4f}")
+                self.entries[i][1].insert(0, f"{cen:.4f}")
+                self.entries[i][2].insert(0, f"{wid:.4f}")
+
+                # 誤差の表示（readonlyに設定）
+                for error_entry in self.error_entries[i]:
+                    error_entry.config(state="normal")  # 一時的に "normal" に変更
+                self.error_entries[i][0].delete(0, tk.END)
+                self.error_entries[i][1].delete(0, tk.END)
+                self.error_entries[i][2].delete(0, tk.END)
+
+                # 誤差をstderrから取得して表示
+                self.error_entries[i][0].insert(0, f"{result.params[f'amp_{i+1}'].stderr:.4f}")
+                self.error_entries[i][1].insert(0, f"{result.params[f'cen_{i+1}'].stderr:.4f}")
+                self.error_entries[i][2].insert(0, f"{result.params[f'wid_{i+1}'].stderr:.4f}")
+
+                # 最後にエントリを "readonly" に戻す（誤差のみに適用）
+                for error_entry in self.error_entries[i]:
+                    error_entry.config(state="readonly")
+
+        # 最後にバックグラウンドのエントリを "readonly" に戻す（誤差部分はreadonlyにする）
+        for entry in self.bg_entries:
+            entry.config(state="normal")
+        for entry in self.bg_errors:
+            entry.config(state="readonly")  # 誤差部分のみ readonly に戻す
+
+
+            
     def save_fitting_results(self):
-        if not hasattr(self, 'popt'):
-            messagebox.showerror("Error", "No fitting results available to save.")
-            return
+        # フィッティング結果をCSVに保存
+        pass
 
-        file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV Files", "*.csv")])
-        if not file_path:
-            return
 
-        try:
-            popt = self.popt
-            num_peaks = (len(popt) - 3) // 3
-            combined_fit = combined_function(self.x_data, popt)
-
-            # 保存するデータの作成
-            headers = ["x_data", "y_data", "y_error", "combined_fit"]
-            for i in range(num_peaks):
-                headers.append(f"gaussian_{i+1}_fit")
-
-            output_data = [headers]
-            for i, x in enumerate(self.x_data):
-                row = [x, self.y_data[i], self.y_error[i], combined_fit[i]]
-                output_data.append(row)
-
-            # CSVに保存
-            with open(file_path, "w", newline="") as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerows(output_data)
-
-            messagebox.showinfo("Success", f"Fitting results successfully saved to {file_path}")
-
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to save fitting results: {e}")
-
-# アプリケーションの起動
-root = tk.Tk()
-app = FittingToolApp(root)
-root.mainloop()
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = FittingTool(root)
+    root.mainloop()

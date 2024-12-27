@@ -78,7 +78,6 @@ class FittingToolApp:
         self.save_button = ttk.Button(self.root, text="Save CSV", command=self.save_fitting_results)
         self.save_button.grid(row=0, column=2, padx=10, pady=10)
 
-
     def create_entry_widgets(self):
         self.entries = []
         self.error_entries = []
