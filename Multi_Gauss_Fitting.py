@@ -6,10 +6,12 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import csv
 
+__version__ = '1.0.0'
+
 class FittingTool:
     def __init__(self, root):
         self.root = root
-        self.root.title("Fitting Tool")
+        self.root.title(f"Multi Gaussian Fitting    ver: {__version__}")
         
         # UI要素の初期化
         self.init_ui()
@@ -449,3 +451,6 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = FittingTool(root)
     root.mainloop()
+
+# cd C:\DATA_HK\python\fitting_software
+# pyinstaller -F --noconsole  Multi_Gauss_Fitting.py
