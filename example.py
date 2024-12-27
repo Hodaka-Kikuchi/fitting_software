@@ -14,8 +14,8 @@ from scipy import signal
 
 # ガウシアン関数
 def gaussian(x, amplitude, center, fwhm):
-    return amplitude * np.exp(-4 * np.log(2) * ((x - center) / fwhm) ** 2) / (fwhm * (np.pi/(4 * np.log(2)))**(1/2))
-    #return amplitude * np.exp(-4 * np.log(2) * ((x - center) / fwhm) ** 2) # であればAは高さに等しい。直観的には入力しやすい。
+    #return amplitude * np.exp(-4 * np.log(2) * ((x - center) / fwhm) ** 2) / (fwhm * (np.pi/(4 * np.log(2)))**(1/2))
+    return amplitude * np.exp(-4 * np.log(2) * ((x - center) / fwhm) ** 2) # であればAは高さに等しい。直観的には入力しやすい。
 
 # バックグラウンド（定数、1次、2次）
 def background(x, a0, a1, a2):
