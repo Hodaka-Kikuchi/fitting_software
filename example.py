@@ -82,11 +82,20 @@ class FittingToolApp:
         self.bg_params = [tk.DoubleVar(value=0) for _ in range(3)]
         self.bg_labels = ["Constant", "Linear", "Quadratic"]
 
-        # 背景フィット用ラベルとエントリ
+        # バックグラウンドフィット用ラベルとエントリ
         for i, label in enumerate(self.bg_labels):
-            ttk.Label(self.root, text=label).grid(row=2, column=i, padx=5, pady=5)
-            entry = ttk.Entry(self.root, textvariable=self.bg_params[i], width=10)
-            entry.grid(row=3, column=i, padx=5, pady=5)
+            ttk.Label(self.root, text=label).grid(row=2, column=1+i, padx=5, pady=5)
+            bg_entry = ttk.Entry(self.root, textvariable=self.bg_params[i], width=10)
+            bg_entry.grid(row=3, column=1+i, padx=5, pady=5)
+            
+        self.err_bg_params = [tk.DoubleVar(value=0) for _ in range(3)]
+        self.err_bg_labels = ["Error(Constant)", "Error(Linear)", "Error(Quadratic)"]
+
+        # バックグラウンドフィット用ラベルとエントリ
+        for i, label in enumerate(self.err_bg_labels):
+            ttk.Label(self.root, text=label).grid(row=2, column=4+i, padx=5, pady=5)
+            bg_error_entry = ttk.Entry(self.root, textvariable=self.err_bg_params[i], width=10, state="readonly")
+            bg_error_entry.grid(row=3, column=4+i, padx=5, pady=5)
 
         # エントリーボックスとラベル
         ttk.Label(self.root, text="Area").grid(row=5, column=1)
@@ -160,7 +169,7 @@ class FittingToolApp:
         initial_params = []
         bounds = [[], []]
 
-        # 背景パラメータの初期値と境界を設定
+        # バックグラウンドパラメータの初期値と境界を設定
         for param in self.bg_params:
             initial_params.append(param.get())
             bounds[0].append(-np.inf)
@@ -208,6 +217,15 @@ class FittingToolApp:
             # バックグラウンド成分を破線でプロット
             background_curve = background(self.x_data, *bg_params)
             self.ax.plot(self.x_data, background_curve, 'r--', label="Background")
+            
+            # 背景パラメータをUIに反映
+            for i, param_var in enumerate(self.bg_params):
+                param_var.set(f"{popt[i]:.4f}")  # フィッティング結果をDoubleVarに設定
+
+            # 背景パラメータの誤差をUIに反映
+            for i, error_var in enumerate(self.err_bg_params):
+                error = np.sqrt(np.diag(pcov))[i]
+                error_var.set(f"{error:.4f}")  # 誤差をDoubleVarに設定
 
             # 各ガウシアンを破線でプロット
             for i in range(num_peaks):
@@ -281,7 +299,7 @@ class FittingToolApp:
             param_headers = ["parameter", "value", "error"]
             param_data = []
 
-            # 背景パラメータ
+            # バックグラウンドパラメータ
             bg_labels = ["Constant", "Linear", "Quadratic"]
             for i, param in enumerate(popt[:3]):
                 param_data.append([bg_labels[i], param, np.sqrt(pcov[i, i])])
