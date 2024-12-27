@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
 from scipy.optimize import curve_fit
+import csv
 
 # ガウシアン関数
 def gaussian(x, amplitude, center, fwhm):
@@ -65,6 +66,14 @@ class FittingToolApp:
 
         # チェックボックスの初期状態を設定
         self.toggle_entry_state()
+        
+        # フィットボタン
+        #self.save_button = ttk.Button(self.root, text="Save CSV",command=lambda: self.save_fitting_results(self.popt, self.pcov))
+        #self.save_button.grid(row=0, column=2, padx=10, pady=10)
+        
+        self.save_button = ttk.Button(self.root, text="Save CSV", command=self.save_fitting_results)
+        self.save_button.grid(row=0, column=2, padx=10, pady=10)
+
 
     def create_entry_widgets(self):
         self.entries = []
@@ -151,11 +160,13 @@ class FittingToolApp:
         initial_params = []
         bounds = [[], []]
 
+        # 背景パラメータの初期値と境界を設定
         for param in self.bg_params:
             initial_params.append(param.get())
             bounds[0].append(-np.inf)
             bounds[1].append(np.inf)
 
+        # ガウシアンピークの初期値と境界を設定
         for i, row_entries in enumerate(self.entries):
             if self.checkboxes[i].get():
                 continue
@@ -170,17 +181,44 @@ class FittingToolApp:
                 return
 
         try:
+            # フィッティング
             popt, pcov = curve_fit(
                 combined_function, self.x_data, self.y_data,
                 p0=initial_params, bounds=bounds
             )
 
+            # 結果を self に保存
+            self.popt = popt
+            self.pcov = pcov
+
+            # プロットを更新
             self.ax.clear()
-            self.ax.plot(self.x_data, self.y_data, label="Data")
+
+            # 元データをエラーバー付きでプロット
+            self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars")
+
+            # フィッティング結果をプロット
             self.ax.plot(self.x_data, combined_function(self.x_data, *popt), label="Fit")
+
+            # 個別のガウシアン成分をプロット
+            num_peaks = (len(popt) - 3) // 3
+            bg_params = popt[:3]
+            peak_params = popt[3:]
+
+            # バックグラウンド成分を破線でプロット
+            background_curve = background(self.x_data, *bg_params)
+            self.ax.plot(self.x_data, background_curve, 'r--', label="Background")
+
+            # 各ガウシアンを破線でプロット
+            for i in range(num_peaks):
+                amplitude, center, fwhm = peak_params[i * 3:(i + 1) * 3]
+                gaussian_curve = gaussian(self.x_data, amplitude, center, fwhm)
+                self.ax.plot(self.x_data, gaussian_curve, '--', label=f"Gaussian {i + 1}")
+
+            # 凡例と描画更新
             self.ax.legend()
             self.canvas.draw()
-
+            
             # 結果をUIに反映
             for i, row_entries in enumerate(self.entries):
                 if self.checkboxes[i].get():
@@ -198,10 +236,84 @@ class FittingToolApp:
                     error_entry.insert(0, f"{error:.4f}")
                     error_entry.config(state="readonly")
 
+            return popt, pcov
         except Exception as e:
             messagebox.showerror("Error", f"Fitting failed: {e}")
 
+    def save_fitting_results(self):
+        # フィッティング結果が存在するか確認
+        if not hasattr(self, 'popt') or not hasattr(self, 'pcov') or self.popt is None or self.pcov is None:
+            messagebox.showerror("Error", "No fitting results available to save.")
+            return
+
+        # ファイル保存ダイアログを表示
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV Files", "*.csv")],
+            title="Save Fitting Results"
+        )
+        if not file_path:  # ファイルが選択されなかった場合
+            return
+
+        try:
+            # 必要なデータを準備
+            popt = self.popt
+            pcov = self.pcov
+            combined_fit = combined_function(self.x_data, *popt)
+            background_fit = background(self.x_data, *popt[:3])
+            num_peaks = (len(popt) - 3) // 3
+            gaussian_fits = [
+                gaussian(self.x_data, *popt[3 + i * 3:3 + (i + 1) * 3]) for i in range(num_peaks)
+            ]
+
+            # CSVファイルのヘッダーを準備
+            headers = ["x_data", "y_data", "y_error", "combined_fit", "background_fit"]
+            headers.extend([f"gaussian_{i + 1}_fit" for i in range(num_peaks)])
+
+            # データ行を構築
+            output_data = [headers]
+            for i, x in enumerate(self.x_data):
+                row = [x, self.y_data[i], self.y_error[i], combined_fit[i], background_fit[i]]
+                row.extend(gaussian_fit[i] for gaussian_fit in gaussian_fits)
+                output_data.append(row)
+
+            # パラメータのデータを構築
+            param_headers = ["parameter", "value", "error"]
+            param_data = []
+
+            # 背景パラメータ
+            bg_labels = ["Constant", "Linear", "Quadratic"]
+            for i, param in enumerate(popt[:3]):
+                param_data.append([bg_labels[i], param, np.sqrt(pcov[i, i])])
+
+            # 各ガウシアンのパラメータ
+            for i in range(num_peaks):
+                labels = [f"Gaussian {i + 1} Amplitude", f"Gaussian {i + 1} Center", f"Gaussian {i + 1} FWHM"]
+                for j, param in enumerate(popt[3 + i * 3:3 + (i + 1) * 3]):
+                    param_data.append([labels[j], param, np.sqrt(pcov[3 + i * 3 + j, 3 + i * 3 + j])])
+
+            # CSVファイルに書き込み
+            with open(file_path, "w", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                # パラメータのセクション
+                writer.writerow(["Fitting Parameters"])
+                writer.writerow(param_headers)
+                writer.writerows(param_data)
+                writer.writerow([])  # 空行を追加
+
+                # フィッティング結果のセクション
+                writer.writerow(["Fitted Curves"])
+                writer.writerows(output_data)
+
+            # 成功メッセージ
+            messagebox.showinfo("Success", f"Fitting results successfully saved to {file_path}")
+
+        except Exception as e:
+            # エラーハンドリング
+            messagebox.showerror("Error", f"Failed to save fitting results: {e}")
+
     
+
 
 # アプリ起動
 root = tk.Tk()
