@@ -1,9 +1,10 @@
-from lmfit import Minimizer, Parameters, report_fit
+from lmfit import Minimizer, Parameters, report_fit, Model
 import numpy as np
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import csv
 
 class FittingTool:
     def __init__(self, root):
@@ -200,13 +201,13 @@ class FittingTool:
 
         # 最小化処理
         mini = Minimizer(self.residual, pfit, fcn_args=(x_data, y_data, y_error))
-        result = mini.leastsq()
+        self.result = mini.leastsq()
 
         # フィット結果をエントリーボックスに表示
-        self.display_fit_results(result)
+        self.display_fit_results(self.result)
         
         # フィット結果をグラフに表示
-        self.plot_fitted_curve(x_data, result)
+        self.plot_fitted_curve(x_data, self.result)
 
     def process_param(self, param):
         """パラメータの 'c' を処理する関数"""
@@ -305,13 +306,123 @@ class FittingTool:
             entry.config(state="normal")
         for entry in self.bg_errors:
             entry.config(state="readonly")  # 誤差部分のみ readonly に戻す
-
-
-            
+    
     def save_fitting_results(self):
-        # フィッティング結果をCSVに保存
-        pass
+        """
+        フィッティング結果とフィッティング曲線をCSVファイルに保存する。
+        """
+        try:
+            # フィッティング結果が存在するか確認
+            if not hasattr(self, 'result'):
+                raise AttributeError("フィッティング結果が存在しません。まずフィットを実行してください。")
 
+            result = self.result
+            fit_params = result.params
+
+            # 元データ
+            x_data = self.x_data
+            y_data = self.y_data
+
+            # フィッティング曲線の計算
+            y_fit = self.calculate_fit_curve(x_data, fit_params)
+
+            # バックグラウンド曲線の計算
+            y_bg = self.calculate_background_curve(x_data, fit_params)
+
+            # 各ガウシアン曲線の計算
+            gaussian_curves = self.calculate_gaussian_curves(x_data, fit_params)
+
+            # 保存ダイアログ
+            filename = filedialog.asksaveasfilename(defaultextension=".csv",
+                                                    filetypes=[("CSV files", "*.csv")])
+            if not filename:
+                return  # ファイル名が指定されなかった場合、処理を中断
+
+            with open(filename, mode='w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+
+                # フィッティングパラメータを書き込み
+                writer.writerow(['Parameter', 'Value', 'Error'])
+                for param_name, param in fit_params.items():
+                    writer.writerow([param_name, param.value, param.stderr])
+
+                # 空行を追加
+                writer.writerow([])
+
+                # データヘッダを書き込み
+                header = ['x_data', 'y_data', 'y_fit', 'y_bg']
+                header += [f'gaussian_{i+1}' for i in range(len(gaussian_curves))]
+                writer.writerow(header)
+
+                # データを行ごとに書き込み
+                for i, x in enumerate(x_data):
+                    row = [x, y_data[i], y_fit[i], y_bg[i]]
+                    row += [gaussian[i] for gaussian in gaussian_curves]
+                    writer.writerow(row)
+
+            messagebox.showinfo("保存完了", "フィッティング結果と曲線を保存しました。")
+
+        except Exception as e:
+            messagebox.showerror("エラー", f"保存中にエラーが発生しました: {e}")
+
+    def calculate_fit_curve(self, x_data, params):
+        """
+        フィッティング曲線を計算する。
+        """
+        return [self.model(params, x) for x in x_data]
+
+    def calculate_background_curve(self, x_data, params):
+        """
+        バックグラウンド曲線を計算する。
+        """
+        bg_a = params['bg_a'].value
+        bg_b = params['bg_b'].value
+        bg_c = params['bg_c'].value
+        return [bg_a + bg_b * x + bg_c * (x**2) for x in x_data]
+
+    def model(self, params, x):
+        """
+        モデル関数：バックグラウンド + ガウシアンの合計を計算する。
+        """
+        # バックグラウンド部分
+        bg_a = params['bg_a'].value
+        bg_b = params['bg_b'].value
+        bg_c = params['bg_c'].value
+        background = bg_a + bg_b * x + bg_c * (x**2)
+
+        # ガウシアン部分
+        gaussian_sum = 0
+        for i in range(1, 11):  # 最大10個のガウシアン
+            amp_key = f'amp_{i}'
+            cen_key = f'cen_{i}'
+            wid_key = f'wid_{i}'
+            if amp_key in params and cen_key in params and wid_key in params:
+                amplitude = params[amp_key].value
+                center = params[cen_key].value
+                width = params[wid_key].value
+                gaussian = amplitude * np.exp(-((x - center)**2) / (2 * (width**2)))
+                gaussian_sum += gaussian
+
+        return background + gaussian_sum
+
+    def calculate_gaussian_curves(self, x_data, params):
+        """
+        各ガウシアン曲線を計算する。
+        """
+        gaussians = []
+        for i in range(1, 11):  # 最大10個のガウシアンを想定
+            amp_key = f'amp_{i}'
+            cen_key = f'cen_{i}'
+            wid_key = f'wid_{i}'
+            if amp_key in params and cen_key in params and wid_key in params:
+                amplitude = params[amp_key].value
+                center = params[cen_key].value
+                width = params[wid_key].value
+                gaussian = [
+                    amplitude * np.exp(-((x - center)**2) / (2 * (width**2))) for x in x_data
+                ]
+                gaussians.append(gaussian)
+        return gaussians
 
 if __name__ == "__main__":
     root = tk.Tk()
