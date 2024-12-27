@@ -78,7 +78,7 @@ class FittingTool:
             bg_entry.grid(row=3, column=1+i, padx=5, pady=5)
             self.bg_entries.append(bg_entry)  # エントリボックスをリストに追加
         for i, label in enumerate(self.bg_err_labels):
-            ttk.Label(self.root, text=label).grid(row=2, column=1+i, padx=5, pady=5)
+            ttk.Label(self.root, text=label).grid(row=2, column=4+i, padx=5, pady=5)
             bg_error_entry = ttk.Entry(self.root, width=10, state="readonly")
             bg_error_entry.grid(row=3, column=4+i, padx=5, pady=5)
             self.bg_errors.append(bg_error_entry)  # 誤差表示用エントリボックスをリストに追加
@@ -146,6 +146,8 @@ class FittingTool:
     def fit_data(self):
         # バックグラウンドパラメータの取得と処理
         bg_a = self.bg_params[0].get()
+        
+        print(bg_a)
         bg_b = self.bg_params[1].get()
         bg_c = self.bg_params[2].get()
 
@@ -153,7 +155,7 @@ class FittingTool:
         bg_a_value, bg_a_fixed = self.process_param(bg_a)
         bg_b_value, bg_b_fixed = self.process_param(bg_b)
         bg_c_value, bg_c_fixed = self.process_param(bg_c)
-
+        
         # 各ピークに対するパラメータの取得とフィッティング
         peak_params = {}
         for i in range(10):  # 最大10個のピークに対して
@@ -176,7 +178,6 @@ class FittingTool:
                 # 'c'がついている場合、固定する処理を追加
                 peak_params[f'amp_{i+1}'] = (amp_value, amp_fixed)
                 peak_params[f'wid_{i+1}'] = (wid_value, wid_fixed)
-
             else:
                 continue
 
@@ -203,6 +204,9 @@ class FittingTool:
 
         # フィット結果をエントリーボックスに表示
         self.display_fit_results(result)
+        
+        # フィット結果をグラフに表示
+        self.plot_fitted_curve(x_data, result)
 
     def process_param(self, param):
         """パラメータの 'c' を処理する関数"""
@@ -212,7 +216,6 @@ class FittingTool:
         else:
             return float(param), False  # 固定しない値として設定
 
-    
     def plot_fitted_curve(self, x_data, result):
         """ フィッティング結果をプロットに追加 """
         # バックグラウンドのフィット
