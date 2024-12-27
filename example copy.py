@@ -1,198 +1,200 @@
+import numpy as np
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import lmfit
 import csv
 
+# ガウシアン関数
 def gaussian(x, amplitude, center, fwhm):
-    sigma = fwhm / (2 * np.sqrt(2 * np.log(2)))
-    return amplitude * np.exp(-((x - center) ** 2) / (2 * sigma ** 2))
+    return amplitude * np.exp(-4 * np.log(2) * ((x - center) / fwhm) ** 2)
 
-def background(x, a, b, c):
-    return a + b * x + c * x ** 2
+# バックグラウンド（定数、1次、2次）
+def background(x, a0, a1, a2):
+    return a0 + a1 * x + a2 * x ** 2
 
-def model(x, *params):
-    num_peaks = (len(params) - 3) // 3  # Subtract 3 for background params
-    bg = background(x, params[0], params[1], params[2])
-    gaussians = sum(gaussian(x, params[3 + i * 3], params[4 + i * 3], params[5 + i * 3]) for i in range(num_peaks))
-    return bg + gaussians
+# ガウシアン + バックグラウンド
+def combined_function(x, params):
+    bg_params = [params['bg_param_0'], params['bg_param_1'], params['bg_param_2']]
+    peaks = 0
+    num_peaks = (len(params) - 3) // 3  # ガウシアンの数
+    for i in range(num_peaks):
+        amplitude = params[f'peak_param_{i*3}']
+        center = params[f'peak_param_{i*3 + 1}']
+        fwhm = params[f'peak_param_{i*3 + 2}']
+        peaks += gaussian(x, amplitude, center, fwhm)
+    bg = background(x, *bg_params)
+    return bg + peaks
 
-def load_data():
-    file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
-    if not file_path:
-        return
+class FittingToolApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Fitting Tool")
 
-    try:
-        data = np.loadtxt(file_path, delimiter=",", skiprows=1)
-        x_data.set(data[:, 0])
-        y_data.set(data[:, 1])
-        y_error.set(data[:, 2])
+        self.init_ui()
 
-        ax.clear()
-        ax.errorbar(data[:, 0], data[:, 1], yerr=data[:, 2], fmt="o", label="Data", markersize=3, color="black")
-        ax.legend()
-        canvas.draw()
-    except Exception as e:
-        messagebox.showerror("Error", f"Failed to load data: {e}")
+    def toggle_entry_state(self):
+        for i, check_var in enumerate(self.checkboxes):
+            state = "normal" if check_var.get() else "readonly"
+            for entry in self.entries[i]:
+                entry.config(state=state)
 
-def perform_fit():
-    try:
-        x = np.array(x_data.get())
-        y = np.array(y_data.get())
-        y_err = np.array(y_error.get())
+    def init_ui(self):
+        self.file_button = ttk.Button(self.root, text="Load CSV", command=self.load_csv)
+        self.file_button.grid(row=0, column=0, padx=10, pady=10)
 
-        # Collect initial guesses and bounds
-        params_init = []
-        bounds_lower = []
-        bounds_upper = []
+        self.figure, self.ax = plt.subplots()
+        self.canvas = FigureCanvasTkAgg(self.figure, master=self.root)
+        self.canvas.get_tk_widget().grid(row=1, column=0, columnspan=7, padx=10, pady=10)
 
+        self.create_entry_widgets()
+
+        self.fit_button = ttk.Button(self.root, text="Fit", command=self.fit_data)
+        self.fit_button.grid(row=0, column=1, padx=10, pady=10)
+
+        self.save_button = ttk.Button(self.root, text="Save CSV", command=self.save_fitting_results)
+        self.save_button.grid(row=0, column=2, padx=10, pady=10)
+
+    def create_entry_widgets(self):
+        self.entries = []
+        self.checkboxes = []
+        self.bg_params = [tk.DoubleVar(value=0) for _ in range(3)]
+        self.bg_labels = ["Constant", "Linear", "Quadratic"]
+
+        # バックグラウンドフィット用ラベルとエントリ
+        for i, label in enumerate(self.bg_labels):
+            ttk.Label(self.root, text=label).grid(row=2, column=1+i, padx=5, pady=5)
+            bg_entry = ttk.Entry(self.root, textvariable=self.bg_params[i], width=10)
+            bg_entry.grid(row=3, column=1+i, padx=5, pady=5)
+
+        # チェックボックスの作成
         for i in range(10):
-            if not checkboxes[i].get():
+            check_var = tk.BooleanVar(value=True)
+            checkbox = ttk.Checkbutton(self.root, variable=check_var, command=self.toggle_entry_state)
+            checkbox.grid(row=6 + i, column=0, padx=5, pady=5)
+            self.checkboxes.append(check_var)
+
+        # 初期値入力ボックスの作成
+        for i in range(10):
+            row_entries = []
+            for j in range(3):
+                entry = ttk.Entry(self.root, width=10)
+                entry.grid(row=6 + i, column=1 + j, padx=5, pady=5)
+                row_entries.append(entry)
+            self.entries.append(row_entries)
+
+    def load_csv(self):
+        file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
+        if not file_path:
+            return
+
+        try:
+            data = np.loadtxt(file_path, delimiter=",", skiprows=1)
+            self.x_data = data[:, 0]
+            self.y_data = data[:, 1]
+            self.y_error = data[:, 2]
+
+            self.ax.clear()
+            self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars")
+            self.ax.legend()
+            self.canvas.draw()
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load CSV file: {e}")
+
+    def fit_data(self):
+        model_params = lmfit.Parameters()
+
+        for i, param in enumerate(self.bg_params):
+            model_params.add(f'bg_param_{i}', value=param.get())
+
+        # ガウシアンのパラメータ設定
+        for i, row_entries in enumerate(self.entries):
+            if self.checkboxes[i].get():
                 continue
 
-            amp = float(entries[i][0].get())
-            cen = float(entries[i][1].get())
-            fwhm = float(entries[i][2].get())
+            try:
+                for j, entry in enumerate(row_entries):
+                    value_str = entry.get()
+                    if value_str.endswith("c"):
+                        fixed_value = float(value_str[:-1])
+                        model_params.add(f'peak_param_{i*3 + j}', value=fixed_value, vary=False)
+                    else:
+                        initial_value = float(value_str)
+                        model_params.add(f'peak_param_{i*3 + j}', value=initial_value)
 
-            params_init.extend([amp, cen, fwhm])
-            bounds_lower.extend([0, min(x), 0])
-            bounds_upper.extend([np.inf, max(x), max(x) - min(x)])
+            except ValueError:
+                pass  # 無効な値を無視
 
-        # Add background parameters
-        bg_constant = bg_vars[0].get()
-        bg_linear = bg_vars[1].get()
-        bg_quadratic = bg_vars[2].get()
+        try:
+            # lmfitでフィッティング
+            fit_result = lmfit.minimize(self.objective_function, model_params, args=(self.x_data, self.y_data, self.y_error))
 
-        params_init = [bg_constant, bg_linear, bg_quadratic] + params_init
-        bounds_lower = [-np.inf, -np.inf, -np.inf] + bounds_lower
-        bounds_upper = [np.inf, np.inf, np.inf] + bounds_upper
+            # フィッティング結果を保存
+            popt = [fit_result.params[param].value for param in fit_result.params]
+            self.update_ui_with_results(popt)
 
-        # Perform fitting
-        popt, pcov = curve_fit(model, x, y, sigma=y_err, p0=params_init, bounds=(bounds_lower, bounds_upper))
+            # プロットを更新
+            self.ax.clear()
+            self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars")
+            self.ax.plot(self.x_data, combined_function(self.x_data, fit_result.params), label="Fit")
+            self.ax.legend()
+            self.canvas.draw()
 
-        # Update entries with fitted parameters and errors
-        errors = np.sqrt(np.diag(pcov))
-        for i in range(10):
-            if not checkboxes[i].get():
+        except Exception as e:
+            messagebox.showerror("Error", f"Fitting failed: {e}")
+
+    def objective_function(self, params, x, y, yerr):
+        model = combined_function(x, params)
+        return (y - model) / yerr
+
+    def update_ui_with_results(self, popt):
+        # フィッティング結果をUIに反映
+        for i, row_entries in enumerate(self.entries):
+            if self.checkboxes[i].get():
                 continue
 
-            entries[i][0].delete(0, tk.END)
-            entries[i][0].insert(0, f"{popt[3 + i * 3]:.4f}")
-            entries[i][1].delete(0, tk.END)
-            entries[i][1].insert(0, f"{popt[4 + i * 3]:.4f}")
-            entries[i][2].delete(0, tk.END)
-            entries[i][2].insert(0, f"{popt[5 + i * 3]:.4f}")
+            base_idx = 3 + i * 3
+            for j, entry in enumerate(row_entries):
+                entry.delete(0, tk.END)
+                entry.insert(0, f"{popt[base_idx + j]:.4f}")
 
-            errors_entries[i][0].delete(0, tk.END)
-            errors_entries[i][0].insert(0, f"{errors[3 + i * 3]:.4f}")
-            errors_entries[i][1].delete(0, tk.END)
-            errors_entries[i][1].insert(0, f"{errors[4 + i * 3]:.4f}")
-            errors_entries[i][2].delete(0, tk.END)
-            errors_entries[i][2].insert(0, f"{errors[5 + i * 3]:.4f}")
+    def save_fitting_results(self):
+        if not hasattr(self, 'popt'):
+            messagebox.showerror("Error", "No fitting results available to save.")
+            return
 
-        # Update graph with fitted curve
-        ax.clear()
-        ax.errorbar(x, y, yerr=y_err, fmt="o", label="Data", markersize=3, color="black")
-        ax.plot(x, model(x, *popt), label="Fit", color="red")
-        ax.legend()
-        canvas.draw()
+        file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV Files", "*.csv")])
+        if not file_path:
+            return
 
-        # Save results to CSV
-        save_results_to_csv(x, y, y_err, popt, errors)
+        try:
+            popt = self.popt
+            num_peaks = (len(popt) - 3) // 3
+            combined_fit = combined_function(self.x_data, popt)
 
-    except Exception as e:
-        messagebox.showerror("Error", f"Fit failed: {e}")
+            # 保存するデータの作成
+            headers = ["x_data", "y_data", "y_error", "combined_fit"]
+            for i in range(num_peaks):
+                headers.append(f"gaussian_{i+1}_fit")
 
-def save_results_to_csv(x, y, y_err, popt, errors):
-    file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
-    if not file_path:
-        return
+            output_data = [headers]
+            for i, x in enumerate(self.x_data):
+                row = [x, self.y_data[i], self.y_error[i], combined_fit[i]]
+                output_data.append(row)
 
-    try:
-        with open(file_path, mode="w", newline="") as file:
-            writer = csv.writer(file)
+            # CSVに保存
+            with open(file_path, "w", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerows(output_data)
 
-            # Write header
-            writer.writerow(["Parameter", "Value", "Error"])
+            messagebox.showinfo("Success", f"Fitting results successfully saved to {file_path}")
 
-            # Write background parameters
-            writer.writerow(["Constant", popt[0], errors[0]])
-            writer.writerow(["Linear", popt[1], errors[1]])
-            writer.writerow(["Quadratic", popt[2], errors[2]])
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save fitting results: {e}")
 
-            # Write Gaussian parameters
-            for i in range(10):
-                writer.writerow([f"Peak {i + 1} Amplitude", popt[3 + i * 3], errors[3 + i * 3]])
-                writer.writerow([f"Peak {i + 1} Center", popt[4 + i * 3], errors[4 + i * 3]])
-                writer.writerow([f"Peak {i + 1} FWHM", popt[5 + i * 3], errors[5 + i * 3]])
-
-            messagebox.showinfo("Success", f"Results saved to {file_path}")
-
-    except Exception as e:
-        messagebox.showerror("Error", f"Failed to save results: {e}")
-
-root = tk.Tk()
-root.title("Fitting Tool")
-
-x_data, y_data, y_error = tk.DoubleVar(), tk.DoubleVar(), tk.DoubleVar()
-
-frame_top = tk.Frame(root)
-frame_top.pack(side=tk.TOP, fill=tk.X)
-
-tk.Button(frame_top, text="Load Data", command=load_data).pack(side=tk.LEFT)
-
-bg_frame = tk.Frame(frame_top)
-bg_frame.pack(side=tk.LEFT, padx=10)
-
-tk.Label(bg_frame, text="Background: ").pack(side=tk.LEFT)
-bg_vars = [tk.DoubleVar(value=0) for _ in range(3)]
-tk.Entry(bg_frame, textvariable=bg_vars[0], width=8).pack(side=tk.LEFT)
-tk.Entry(bg_frame, textvariable=bg_vars[1], width=8).pack(side=tk.LEFT)
-tk.Entry(bg_frame, textvariable=bg_vars[2], width=8).pack(side=tk.LEFT)
-
-tk.Button(frame_top, text="Fit", command=perform_fit).pack(side=tk.RIGHT)
-
-frame_canvas = tk.Frame(root)
-frame_canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-fig, ax = plt.subplots(figsize=(8, 5))
-canvas = FigureCanvasTkAgg(fig, master=frame_canvas)
-canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-frame_bottom = tk.Frame(root)
-frame_bottom.pack(side=tk.BOTTOM, fill=tk.X)
-
-checkboxes = []
-entries = []
-errors_entries = []
-
-for i in range(10):
-    row_frame = tk.Frame(frame_bottom)
-    row_frame.pack(fill=tk.X)
-
-    check_var = tk.BooleanVar(value=True)  # デフォルトでチェック済み
-    check = tk.Checkbutton(row_frame, variable=check_var)
-    check.pack(side=tk.LEFT)
-    checkboxes.append(check_var)
-
-    entry_row = []
-    errors_row = []
-    for _ in range(3):  # 面積、中心、FWHM用
-        entry = tk.Entry(row_frame, width=10)
-        entry.pack(side=tk.LEFT, padx=5)
-        entry_row.append(entry)
-
-        error = tk.Entry(row_frame, width=10, state='readonly')  # 誤差用
-        error.pack(side=tk.LEFT, padx=5)
-        errors_row.append(error)
-
-    entries.append(entry_row)
-    error_entries.append(errors_row)
-
-
-# アプリ起動
+# アプリケーションの起動
 root = tk.Tk()
 app = FittingToolApp(root)
 root.mainloop()
