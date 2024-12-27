@@ -31,10 +31,6 @@ class FittingTool:
         # 保存ボタン
         self.save_button = ttk.Button(self.root, text="Save CSV", command=self.save_fitting_results)
         self.save_button.grid(row=0, column=2, padx=10, pady=10)
-        
-        # 保存ボタン
-        self.save_button = ttk.Button(self.root, text="back", command=self.back_param)
-        self.save_button.grid(row=4, column=0, padx=10, pady=10)
 
         # エントリーボックス作成 (フィッティング用のエントリ)
         self.entries = []
@@ -128,10 +124,6 @@ class FittingTool:
         ttk.Label(self.root, text="Error (Area)").grid(row=4, column=4)
         ttk.Label(self.root, text="Error (Center)").grid(row=4, column=5)
         ttk.Label(self.root, text="Error (FWHM)").grid(row=4, column=6)
-
-    # back paramの定義
-    def back_param(self):
-        pass
     
     def toggle_entry_state(self):
         """ チェックボックスの状態に応じてエントリの有効化・無効化 """
