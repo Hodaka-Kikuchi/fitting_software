@@ -77,6 +77,7 @@ class FittingTool:
             ttk.Label(self.root, text=label).grid(row=2, column=1+i, padx=5, pady=5)
             bg_entry = ttk.Entry(self.root, width=10)
             bg_entry.grid(row=3, column=1+i, padx=5, pady=5)
+            bg_entry.insert(0,0)
             self.bg_entries.append(bg_entry)  # エントリボックスをリストに追加
         for i, label in enumerate(self.bg_err_labels):
             ttk.Label(self.root, text=label).grid(row=2, column=4+i, padx=5, pady=5)
@@ -118,7 +119,6 @@ class FittingTool:
         ttk.Label(self.root, text="Error (Center)").grid(row=5, column=5)
         ttk.Label(self.root, text="Error (FWHM)").grid(row=5, column=6)
 
-
     def toggle_entry_state(self):
         """ チェックボックスの状態に応じてエントリの有効化・無効化 """
         for i in range(10):
@@ -140,7 +140,8 @@ class FittingTool:
                 amp = params[f'amp_{i+1}']
                 cen = params[f'cen_{i+1}']
                 wid = params[f'wid_{i+1}']
-                model += amp * np.exp(-(x - cen)**2 / (2 * wid**2))
+                model += amp * np.exp(-4 * np.log(2) * ((x - cen) / wid)**2)/ (wid * (np.pi/(4 * np.log(2)))**(1/2))
+                # amp * np.exp(-4 * np.log(2) * ((x_data - cen) / wid)**2)/ (wid * (np.pi/(4 * np.log(2)))**(1/2))
         
         return (y - model) / y_err  # ノイズを無視するために誤差で割る
 
@@ -231,7 +232,8 @@ class FittingTool:
                 wid = result.params[f'wid_{i+1}'].value
 
                 # ガウス曲線を追加
-                y_fit += amp * np.exp(-(x_data - cen)**2 / (2 * (wid / 2.355)**2))
+                y_fit += amp * np.exp(-4 * np.log(2) * ((x_data - cen) / wid)**2)/ (wid * (np.pi/(4 * np.log(2)))**(1/2))
+                #amplitude * np.exp(-4 * np.log(2) * ((x - center) / fwhm) ** 2) / (fwhm * (np.pi/(4 * np.log(2)))**(1/2))
 
         # グラフを更新
         self.ax.clear()
