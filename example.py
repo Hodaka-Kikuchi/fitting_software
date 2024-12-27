@@ -330,9 +330,6 @@ class FittingToolApp:
             # エラーハンドリング
             messagebox.showerror("Error", f"Failed to save fitting results: {e}")
 
-    
-
-
 # アプリ起動
 root = tk.Tk()
 app = FittingToolApp(root)
