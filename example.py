@@ -4,7 +4,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import numpy as np
 from scipy.optimize import curve_fit
 import csv
@@ -61,6 +61,12 @@ class FittingToolApp:
         self.canvas = FigureCanvasTkAgg(self.figure, master=self.root)
         self.canvas.get_tk_widget().grid(row=1, column=0, columnspan=7, padx=10, pady=10)
 
+        # ツールバーの作成と表示
+        toolbar_frame = tk.Frame(self.root)  # ツールバー用のフレームを作成
+        toolbar_frame.grid(row=2, column=0, columnspan=7, padx=10, pady=5)  # ツールバーの配置
+        self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
+        self.toolbar.update()
+
         # エントリーボックスの作成
         self.create_entry_widgets()
 
@@ -87,18 +93,18 @@ class FittingToolApp:
 
         # バックグラウンドフィット用ラベルとエントリ
         for i, label in enumerate(self.bg_labels):
-            ttk.Label(self.root, text=label).grid(row=2, column=1+i, padx=5, pady=5)
+            ttk.Label(self.root, text=label).grid(row=3, column=1+i, padx=5, pady=5)
             bg_entry = ttk.Entry(self.root, textvariable=self.bg_params[i], width=10)
-            bg_entry.grid(row=3, column=1+i, padx=5, pady=5)
+            bg_entry.grid(row=4, column=1+i, padx=5, pady=5)
             
         self.err_bg_params = [tk.DoubleVar(value=0) for _ in range(3)]
         self.err_bg_labels = ["Error(Constant)", "Error(Linear)", "Error(Quadratic)"]
 
         # バックグラウンドフィット用ラベルとエントリ
         for i, label in enumerate(self.err_bg_labels):
-            ttk.Label(self.root, text=label).grid(row=2, column=4+i, padx=5, pady=5)
+            ttk.Label(self.root, text=label).grid(row=3, column=4+i, padx=5, pady=5)
             bg_error_entry = ttk.Entry(self.root, textvariable=self.err_bg_params[i], width=10, state="readonly")
-            bg_error_entry.grid(row=3, column=4+i, padx=5, pady=5)
+            bg_error_entry.grid(row=4, column=4+i, padx=5, pady=5)
 
         # エントリーボックスとラベル
         ttk.Label(self.root, text="Area").grid(row=5, column=1)

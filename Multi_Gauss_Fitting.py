@@ -3,7 +3,7 @@ import numpy as np
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import csv
 
 __version__ = '1.0.0'
@@ -25,6 +25,12 @@ class FittingTool:
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvasTkAgg(self.figure, master=self.root)
         self.canvas.get_tk_widget().grid(row=1, column=0, columnspan=7, padx=10, pady=10)
+        
+        # ツールバーの作成と表示
+        toolbar_frame = tk.Frame(self.root)  # ツールバー用のフレームを作成
+        toolbar_frame.grid(row=2, column=0, columnspan=7, padx=10, pady=5)  # ツールバーの配置
+        self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
+        self.toolbar.update()
 
         # フィットボタン
         self.fit_button = ttk.Button(self.root, text="Fit", command=self.fit_data)
@@ -81,14 +87,14 @@ class FittingTool:
             # チェックボックス (初期状態でオフ)
             check_var = tk.BooleanVar(value=False)
             checkbox = ttk.Checkbutton(self.root, variable=check_var, command=self.toggle_entry_state)
-            checkbox.grid(row=5 + i, column=0, padx=5, pady=5)
+            checkbox.grid(row=6 + i, column=0, padx=5, pady=5)
             self.checkboxes.append(check_var)
         
         # エントリボックスをリストに追加
         for i, label in enumerate(self.bg_labels):
-            ttk.Label(self.root, text=label).grid(row=2, column=1+i, padx=5, pady=5)
+            ttk.Label(self.root, text=label).grid(row=3, column=1+i, padx=5, pady=5)
             bg_entry = ttk.Entry(self.root, width=10)
-            bg_entry.grid(row=3, column=1+i, padx=5, pady=5)
+            bg_entry.grid(row=4, column=1+i, padx=5, pady=5)
             bg_entry.insert(0,0)
             self.bg_entries.append(bg_entry)  
             
@@ -98,15 +104,15 @@ class FittingTool:
             # 各ガウシアンのエントリボックス (Area, Center, FWHM)
             for j in range(3):
                 entry = ttk.Entry(self.root, width=10)
-                entry.grid(row=5 + i, column=1 + j, padx=5, pady=5)
+                entry.grid(row=6 + i, column=1 + j, padx=5, pady=5)
                 row_entries.append(entry)
             self.entries.append(row_entries)
             
         # 誤差表示用エントリボックスをリストに追加
         for i, label in enumerate(self.bg_err_labels):
-            ttk.Label(self.root, text=label).grid(row=2, column=4+i, padx=5, pady=5)
+            ttk.Label(self.root, text=label).grid(row=3, column=4+i, padx=5, pady=5)
             bg_error_entry = ttk.Entry(self.root, width=10, state="readonly")
-            bg_error_entry.grid(row=3, column=4+i, padx=5, pady=5)
+            bg_error_entry.grid(row=4, column=4+i, padx=5, pady=5)
             self.bg_errors.append(bg_error_entry)  
 
         # ガウシアンのパラメータの誤差        
@@ -115,17 +121,17 @@ class FittingTool:
             # 各ガウシアンの誤差表示用エントリボックス (readonly)
             for j in range(3):
                 error_entry = ttk.Entry(self.root, width=10, state="readonly")
-                error_entry.grid(row=5 + i, column=4 + j, padx=5, pady=5)
+                error_entry.grid(row=6 + i, column=4 + j, padx=5, pady=5)
                 row_errors.append(error_entry)
             self.error_entries.append(row_errors)
             
         # パラメータのラベル
-        ttk.Label(self.root, text="Area").grid(row=4, column=1)
-        ttk.Label(self.root, text="Center").grid(row=4, column=2)
-        ttk.Label(self.root, text="FWHM").grid(row=4, column=3)
-        ttk.Label(self.root, text="Error (Area)").grid(row=4, column=4)
-        ttk.Label(self.root, text="Error (Center)").grid(row=4, column=5)
-        ttk.Label(self.root, text="Error (FWHM)").grid(row=4, column=6)
+        ttk.Label(self.root, text="Area").grid(row=5, column=1)
+        ttk.Label(self.root, text="Center").grid(row=5, column=2)
+        ttk.Label(self.root, text="FWHM").grid(row=5, column=3)
+        ttk.Label(self.root, text="Error (Area)").grid(row=5, column=4)
+        ttk.Label(self.root, text="Error (Center)").grid(row=5, column=5)
+        ttk.Label(self.root, text="Error (FWHM)").grid(row=5, column=6)
     
     def toggle_entry_state(self):
         """ チェックボックスの状態に応じてエントリの有効化・無効化 """
