@@ -11,7 +11,7 @@ __version__ = '1.1.0'
 class FittingTool:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"Multi Gaussian Fitting    ver: {__version__}")
+        self.root.title(f"Multi Pseudo Voigt Fitting    ver: {__version__}")
         
         # UI要素の初期化
         self.init_ui()
@@ -24,11 +24,11 @@ class FittingTool:
         # グラフ表示用キャンバス
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvasTkAgg(self.figure, master=self.root)
-        self.canvas.get_tk_widget().grid(row=1, column=0, columnspan=7, padx=10, pady=10)
+        self.canvas.get_tk_widget().grid(row=1, column=0, rowspan=11, columnspan=3, padx=10, pady=10)
         
         # ツールバーの作成と表示
         toolbar_frame = tk.Frame(self.root)  # ツールバー用のフレームを作成
-        toolbar_frame.grid(row=2, column=0, columnspan=7, padx=10, pady=5)  # ツールバーの配置
+        toolbar_frame.grid(row=12, column=0, columnspan=3, padx=10, pady=5)  # ツールバーの配置
         self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
         self.toolbar.update()
 
@@ -74,13 +74,6 @@ class FittingTool:
             messagebox.showerror("Error", f"Failed to load CSV file: {e}")
 
     def create_entry_widgets(self):
-        # χ^2を表示する
-        self.X2_entry = []
-        ttk.Label(self.root, text="χ^2").grid(row=3, column=0, padx=5, pady=5)
-        X2_entry = ttk.Entry(self.root, width=10, state="readonly")
-        X2_entry.grid(row=4, column=0, padx=5, pady=5)
-        self.X2_entry.append(X2_entry) 
-        
         self.entries = []
         self.bg_entries = []
         self.error_entries = []
@@ -94,14 +87,21 @@ class FittingTool:
             # チェックボックス (初期状態でオフ)
             check_var = tk.BooleanVar(value=False)
             checkbox = ttk.Checkbutton(self.root, variable=check_var, command=self.toggle_entry_state)
-            checkbox.grid(row=6 + i, column=0, padx=5, pady=5)
+            checkbox.grid(row=3 + i, column=3, padx=5, pady=5)
             self.checkboxes.append(check_var)
+            
+        # χ^2を表示する
+        self.X2_entry = []
+        ttk.Label(self.root, text="χ^2").grid(row=0, column=3, padx=5, pady=5)
+        X2_entry = ttk.Entry(self.root, width=10, state="readonly")
+        X2_entry.grid(row=1, column=3, padx=5, pady=5)
+        self.X2_entry.append(X2_entry) 
         
         # エントリボックスをリストに追加
         for i, label in enumerate(self.bg_labels):
-            ttk.Label(self.root, text=label).grid(row=3, column=1+i, padx=5, pady=5)
+            ttk.Label(self.root, text=label).grid(row=0, column=4+i, padx=5, pady=5)
             bg_entry = ttk.Entry(self.root, width=10)
-            bg_entry.grid(row=4, column=1+i, padx=5, pady=5)
+            bg_entry.grid(row=1, column=4+i, padx=5, pady=5)
             bg_entry.insert(0,0)
             self.bg_entries.append(bg_entry)  
             
@@ -111,15 +111,15 @@ class FittingTool:
             # 各ガウシアンのエントリボックス (Area, Center, FWHM)
             for j in range(3):
                 entry = ttk.Entry(self.root, width=10)
-                entry.grid(row=6 + i, column=1 + j, padx=5, pady=5)
+                entry.grid(row=3 + i, column=4 + j, padx=5, pady=5)
                 row_entries.append(entry)
             self.entries.append(row_entries)
             
         # 誤差表示用エントリボックスをリストに追加
         for i, label in enumerate(self.bg_err_labels):
-            ttk.Label(self.root, text=label).grid(row=3, column=4+i, padx=5, pady=5)
+            ttk.Label(self.root, text=label).grid(row=0, column=7+i, padx=5, pady=5)
             bg_error_entry = ttk.Entry(self.root, width=10, state="readonly")
-            bg_error_entry.grid(row=4, column=4+i, padx=5, pady=5)
+            bg_error_entry.grid(row=1, column=7+i, padx=5, pady=5)
             self.bg_errors.append(bg_error_entry)  
 
         # ガウシアンのパラメータの誤差        
@@ -128,17 +128,20 @@ class FittingTool:
             # 各ガウシアンの誤差表示用エントリボックス (readonly)
             for j in range(3):
                 error_entry = ttk.Entry(self.root, width=10, state="readonly")
-                error_entry.grid(row=6 + i, column=4 + j, padx=5, pady=5)
+                error_entry.grid(row=3 + i, column=7 + j, padx=5, pady=5)
                 row_errors.append(error_entry)
             self.error_entries.append(row_errors)
             
         # パラメータのラベル
-        ttk.Label(self.root, text="Area").grid(row=5, column=1)
-        ttk.Label(self.root, text="Center").grid(row=5, column=2)
-        ttk.Label(self.root, text="FWHM").grid(row=5, column=3)
-        ttk.Label(self.root, text="Error (Area)").grid(row=5, column=4)
-        ttk.Label(self.root, text="Error (Center)").grid(row=5, column=5)
-        ttk.Label(self.root, text="Error (FWHM)").grid(row=5, column=6)
+        ttk.Label(self.root, text="G_ratio").grid(row=2, column=4)
+        ttk.Label(self.root, text="Area").grid(row=2, column=5)
+        ttk.Label(self.root, text="Center").grid(row=2, column=6)
+        ttk.Label(self.root, text="G_FWHM").grid(row=2, column=7)
+        ttk.Label(self.root, text="L_FWHM").grid(row=2, column=8)
+        ttk.Label(self.root, text="Error (Area)").grid(row=2, column=9)
+        ttk.Label(self.root, text="Error (Center)").grid(row=2, column=10)
+        ttk.Label(self.root, text="Error (G_FWHM)").grid(row=2, column=11)
+        ttk.Label(self.root, text="Error (L_FWHM)").grid(row=2, column=12)
     
     def toggle_entry_state(self):
         """ チェックボックスの状態に応じてエントリの有効化・無効化 """
