@@ -233,9 +233,9 @@ class FittingTool:
         # ガウシアン項
         for i in range(10):
             if self.checkboxes[i].get():
-                amp = params[f'amp_{i+1}']
-                cen = params[f'cen_{i+1}']
-                wid = params[f'wid_{i+1}']
+                amp = params[f'area_{i+1}']
+                cen = params[f'center_{i+1}']
+                wid = params[f'FWHM_{i+1}']
                 model += amp * np.exp(-4 * np.log(2) * ((x - cen) / wid)**2)/ (wid * (np.pi/(4 * np.log(2)))**(1/2))
                 # amp * np.exp(-4 * np.log(2) * ((x_data - cen) / wid)**2)/ (wid * (np.pi/(4 * np.log(2)))**(1/2))
         
@@ -262,13 +262,13 @@ class FittingTool:
 
                 # 'c'がついている場合、'c'を取り除いて数値として設定
                 center_value, center_fixed = self.process_param(center)
-                amp_value, amp_fixed = self.process_param(area)
-                wid_value, wid_fixed = self.process_param(fwhm)
+                area_value, area_fixed = self.process_param(area)
+                FWHM_value, FWHM_fixed = self.process_param(fwhm)
 
                 # 'c'がついている場合、固定する処理を追加
-                peak_params[f'cen_{i+1}'] = (center_value, center_fixed)
-                peak_params[f'amp_{i+1}'] = (amp_value, amp_fixed)
-                peak_params[f'wid_{i+1}'] = (wid_value, wid_fixed)
+                peak_params[f'center_{i+1}'] = (center_value, center_fixed)
+                peak_params[f'area_{i+1}'] = (area_value, area_fixed)
+                peak_params[f'FWHM_{i+1}'] = (FWHM_value, FWHM_fixed)
             else:
                 continue
 
@@ -329,10 +329,10 @@ class FittingTool:
 
         # 各ピークのガウスフィット
         for i in range(10):
-            if f'cen_{i+1}' in result.params:
-                amp = result.params[f'amp_{i+1}'].value
-                cen = result.params[f'cen_{i+1}'].value
-                wid = result.params[f'wid_{i+1}'].value
+            if f'center_{i+1}' in result.params:
+                amp = result.params[f'area_{i+1}'].value
+                cen = result.params[f'center_{i+1}'].value
+                wid = result.params[f'FWHM_{i+1}'].value
 
                 # ガウス曲線を計算
                 peak_y = amp * np.exp(-4 * np.log(2) * ((fit_x_data - cen) / wid)**2) / (wid * (np.pi/(4 * np.log(2)))**(1/2))
@@ -387,19 +387,19 @@ class FittingTool:
         for i in range(10):
             if self.checkboxes[i].get():
                 # 各ピークの結果をエントリに設定
-                amp = result.params[f'amp_{i+1}'].value
-                cen = result.params[f'cen_{i+1}'].value
-                wid = result.params[f'wid_{i+1}'].value
+                amp = result.params[f'area_{i+1}'].value
+                cen = result.params[f'center_{i+1}'].value
+                wid = result.params[f'FWHM_{i+1}'].value
                 
                 # cが付いている場合、末尾に 'c' を追加して表示
-                amp_value, amp_fixed = peak_params[f'amp_{i+1}']
-                cen_value, cen_fixed = peak_params[f'cen_{i+1}']
-                wid_value, wid_fixed = peak_params[f'wid_{i+1}']
+                area_value, area_fixed = peak_params[f'area_{i+1}']
+                center_value, center_fixed = peak_params[f'center_{i+1}']
+                FWHM_value, FWHM_fixed = peak_params[f'FWHM_{i+1}']
 
                 # 'c'が付いている場合、末尾に 'c' を追加して表示
-                amp_str = f"{amp:.4f}" + ('c' if amp_fixed else '')
-                cen_str = f"{cen:.4f}" + ('c' if cen_fixed else '')
-                wid_str = f"{wid:.4f}" + ('c' if wid_fixed else '')
+                area_str = f"{amp:.4f}" + ('c' if area_fixed else '')
+                center_str = f"{cen:.4f}" + ('c' if center_fixed else '')
+                FWHM_str = f"{wid:.4f}" + ('c' if FWHM_fixed else '')
 
                 # 結果をエントリに設定
                 for entry in self.entries[i]:
@@ -408,9 +408,9 @@ class FittingTool:
                 self.entries[i][1].delete(0, tk.END)
                 self.entries[i][2].delete(0, tk.END)
 
-                self.entries[i][0].insert(0, amp_str)
-                self.entries[i][1].insert(0, cen_str)
-                self.entries[i][2].insert(0, wid_str)
+                self.entries[i][0].insert(0, area_str)
+                self.entries[i][1].insert(0, center_str)
+                self.entries[i][2].insert(0, FWHM_str)
 
                 # 誤差の表示（readonlyに設定）
                 for error_entry in self.error_entries[i]:
@@ -420,9 +420,9 @@ class FittingTool:
                 self.error_entries[i][2].delete(0, tk.END)
 
                 # 誤差をstderrから取得して表示
-                self.error_entries[i][0].insert(0, f"{result.params[f'amp_{i+1}'].stderr:.4f}")
-                self.error_entries[i][1].insert(0, f"{result.params[f'cen_{i+1}'].stderr:.4f}")
-                self.error_entries[i][2].insert(0, f"{result.params[f'wid_{i+1}'].stderr:.4f}")
+                self.error_entries[i][0].insert(0, f"{result.params[f'area_{i+1}'].stderr:.4f}")
+                self.error_entries[i][1].insert(0, f"{result.params[f'center_{i+1}'].stderr:.4f}")
+                self.error_entries[i][2].insert(0, f"{result.params[f'FWHM_{i+1}'].stderr:.4f}")
                 
                 # 最後にエントリを "readonly" に戻す（誤差のみに適用）
                 for error_entry in self.error_entries[i]:
@@ -530,13 +530,13 @@ class FittingTool:
         # ガウシアン部分
         gaussian_sum = 0
         for i in range(1, 11):  # 最大10個のガウシアン
-            amp_key = f'amp_{i}'
-            cen_key = f'cen_{i}'
-            wid_key = f'wid_{i}'
-            if amp_key in params and cen_key in params and wid_key in params:
-                amplitude = params[amp_key].value
-                center = params[cen_key].value
-                width = params[wid_key].value
+            area_key = f'area_{i}'
+            center_key = f'center_{i}'
+            FWHM_key = f'FWHM_{i}'
+            if area_key in params and center_key in params and FWHM_key in params:
+                amplitude = params[area_key].value
+                center = params[center_key].value
+                width = params[FWHM_key].value
                 gaussian = amplitude * np.exp(-4 * np.log(2) * ((x - center) / width)**2)/ (width * (np.pi/(4 * np.log(2)))**(1/2))
                 gaussian_sum += gaussian
 
@@ -548,13 +548,13 @@ class FittingTool:
         """
         gaussians = []
         for i in range(1, 11):  # 最大10個のガウシアンを想定
-            amp_key = f'amp_{i}'
-            cen_key = f'cen_{i}'
-            wid_key = f'wid_{i}'
-            if amp_key in params and cen_key in params and wid_key in params:
-                amplitude = params[amp_key].value
-                center = params[cen_key].value
-                width = params[wid_key].value
+            area_key = f'area_{i}'
+            center_key = f'center_{i}'
+            FWHM_key = f'FWHM_{i}'
+            if area_key in params and center_key in params and FWHM_key in params:
+                amplitude = params[area_key].value
+                center = params[center_key].value
+                width = params[FWHM_key].value
                 gaussian = [
                     amplitude * np.exp(-4 * np.log(2) * ((x - center) / width)**2)/ (width * (np.pi/(4 * np.log(2)))**(1/2)) for x in x_data
                 ]
