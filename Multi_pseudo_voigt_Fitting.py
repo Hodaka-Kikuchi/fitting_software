@@ -17,28 +17,50 @@ class FittingTool:
         self.init_ui()
 
     def init_ui(self):
-        # ファイル選択ボタン
-        self.file_button = ttk.Button(self.root, text="Load CSV", command=self.load_csv)
-        self.file_button.grid(row=0, column=0, padx=10, pady=10)
-
+        self.columnshift = 5
+        self.rowshift = 11
+        
         # グラフ表示用キャンバス
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvasTkAgg(self.figure, master=self.root)
-        self.canvas.get_tk_widget().grid(row=1, column=0, rowspan=11, columnspan=3, padx=10, pady=10)
+        self.canvas.get_tk_widget().grid(row=1, column=1, rowspan=self.rowshift-1, columnspan=self.columnshift-1, padx=10, pady=10)
         
         # ツールバーの作成と表示
         toolbar_frame = tk.Frame(self.root)  # ツールバー用のフレームを作成
-        toolbar_frame.grid(row=12, column=0, columnspan=3, padx=10, pady=5)  # ツールバーの配置
+        toolbar_frame.grid(row=12, column=0, columnspan=self.columnshift, padx=10, pady=5)  # ツールバーの配置
         self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
         self.toolbar.update()
+        
+        # 軸領域用エントリーボックス
+        self.range_entries = []
+        ttk.Label(self.root, text="Ymax").grid(row=1, column=0, padx=5, pady=5)
+        range_entry = ttk.Entry(self.root, width=10, state="normal")
+        range_entry.grid(row=2, column=0, padx=5, pady=5)
+        self.range_entries.append(range_entry) 
+        ttk.Label(self.root, text="Ymin").grid(row=self.rowshift-2, column=0, padx=5, pady=5)
+        range_entry = ttk.Entry(self.root, width=10, state="normal")
+        range_entry.grid(row=self.rowshift-1, column=0, padx=5, pady=5)
+        self.range_entries.append(range_entry) 
+        ttk.Label(self.root, text="Xmin").grid(row=self.rowshift, column=1, padx=5, pady=5)
+        range_entry = ttk.Entry(self.root, width=10, state="normal")
+        range_entry.grid(row=self.rowshift, column=2, padx=5, pady=5)
+        self.range_entries.append(range_entry) 
+        ttk.Label(self.root, text="Xmax").grid(row=self.rowshift, column=self.columnshift-2, padx=5, pady=5)
+        range_entry = ttk.Entry(self.root, width=10, state="normal")
+        range_entry.grid(row=self.rowshift, column=self.columnshift-1, padx=5, pady=5)
+        self.range_entries.append(range_entry) 
+        
+        # ファイル選択ボタン
+        self.file_button = ttk.Button(self.root, text="Load CSV", command=self.load_csv)
+        self.file_button.grid(row=0, column=1, padx=10, pady=10)
 
         # フィットボタン
         self.fit_button = ttk.Button(self.root, text="Fit", command=self.fit_data)
-        self.fit_button.grid(row=0, column=1, padx=10, pady=10)
+        self.fit_button.grid(row=0, column=2, padx=10, pady=10)
 
         # 保存ボタン
         self.save_button = ttk.Button(self.root, text="Save CSV", command=self.save_fitting_results)
-        self.save_button.grid(row=0, column=2, padx=10, pady=10)
+        self.save_button.grid(row=0, column=3, padx=10, pady=10)
 
         # エントリーボックス作成 (フィッティング用のエントリ)
         self.entries = []
@@ -51,6 +73,36 @@ class FittingTool:
         
         # チェックボックスの初期状態を設定
         self.toggle_entry_state()  # ここで最初に呼び出す
+        
+        # キャンバスのグラフ表示領域
+        self.setup_axis_update()
+
+    def update_axis_range(self):
+        """エントリーボックスの値に基づいてグラフの表示範囲を更新"""
+        try:
+            # エントリーボックスから値を取得
+            ymax = float(self.range_entries[0].get()) if self.range_entries[0].get() else None
+            ymin = float(self.range_entries[1].get()) if self.range_entries[1].get() else None
+            xmin = float(self.range_entries[2].get()) if self.range_entries[2].get() else None
+            xmax = float(self.range_entries[3].get()) if self.range_entries[3].get() else None
+
+            # 軸範囲を設定
+            if xmin is not None and xmax is not None:
+                self.ax.set_xlim(xmin, xmax)
+            if ymin is not None and ymax is not None:
+                self.ax.set_ylim(ymin, ymax)
+
+            # グラフを更新
+            self.canvas.draw()
+
+        except ValueError:
+            print("エントリーボックスに正しい数値を入力してください")
+
+    def setup_axis_update(self):
+        """エントリーボックスの値が変更された際にグラフを更新"""
+        for entry in self.range_entries:
+            entry.bind("<FocusOut>", lambda event: self.update_axis_range())
+            entry.bind("<Return>", lambda event: self.update_axis_range())
 
     def load_csv(self):
         file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
@@ -69,6 +121,17 @@ class FittingTool:
             self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars", color='blue')
             self.ax.legend()
             self.canvas.draw()
+            
+            # axis rangeを自動入力
+            self.range_entries[0].delete(0, tk.END)
+            self.range_entries[0].insert(0, f"{np.max(self.y_data):.4f}")
+            self.range_entries[1].delete(0, tk.END)
+            self.range_entries[1].insert(0, f"{np.min(self.y_data):.4f}")
+            self.range_entries[2].delete(0, tk.END)
+            self.range_entries[2].insert(0, f"{np.min(self.x_data):.4f}")
+            self.range_entries[3].delete(0, tk.END)
+            self.range_entries[3].insert(0, f"{np.max(self.x_data):.4f}")
+            
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load CSV file: {e}")
@@ -87,21 +150,21 @@ class FittingTool:
             # チェックボックス (初期状態でオフ)
             check_var = tk.BooleanVar(value=False)
             checkbox = ttk.Checkbutton(self.root, variable=check_var, command=self.toggle_entry_state)
-            checkbox.grid(row=3 + i, column=3, padx=5, pady=5)
+            checkbox.grid(row=3 + i, column=self.columnshift+1, padx=5, pady=5)
             self.checkboxes.append(check_var)
             
         # χ^2を表示する
         self.X2_entry = []
-        ttk.Label(self.root, text="χ^2").grid(row=0, column=3, padx=5, pady=5)
+        ttk.Label(self.root, text="χ^2").grid(row=0, column=self.columnshift+1, padx=5, pady=5)
         X2_entry = ttk.Entry(self.root, width=10, state="readonly")
-        X2_entry.grid(row=1, column=3, padx=5, pady=5)
+        X2_entry.grid(row=1, column=self.columnshift+1, padx=5, pady=5)
         self.X2_entry.append(X2_entry) 
         
         # エントリボックスをリストに追加
         for i, label in enumerate(self.bg_labels):
-            ttk.Label(self.root, text=label).grid(row=0, column=4+i, padx=5, pady=5)
+            ttk.Label(self.root, text=label).grid(row=0, column=self.columnshift+2+i, padx=5, pady=5)
             bg_entry = ttk.Entry(self.root, width=10)
-            bg_entry.grid(row=1, column=4+i, padx=5, pady=5)
+            bg_entry.grid(row=1, column=self.columnshift+2+i, padx=5, pady=5)
             bg_entry.insert(0,0)
             self.bg_entries.append(bg_entry)  
             
@@ -111,15 +174,15 @@ class FittingTool:
             # 各ガウシアンのエントリボックス (Area, Center, FWHM)
             for j in range(3):
                 entry = ttk.Entry(self.root, width=10)
-                entry.grid(row=3 + i, column=4 + j, padx=5, pady=5)
+                entry.grid(row=3 + i, column=self.columnshift+2+j, padx=5, pady=5)
                 row_entries.append(entry)
             self.entries.append(row_entries)
             
         # 誤差表示用エントリボックスをリストに追加
         for i, label in enumerate(self.bg_err_labels):
-            ttk.Label(self.root, text=label).grid(row=0, column=7+i, padx=5, pady=5)
+            ttk.Label(self.root, text=label).grid(row=0, column=self.columnshift+5+i, padx=5, pady=5)
             bg_error_entry = ttk.Entry(self.root, width=10, state="readonly")
-            bg_error_entry.grid(row=1, column=7+i, padx=5, pady=5)
+            bg_error_entry.grid(row=1, column=self.columnshift+5+i, padx=5, pady=5)
             self.bg_errors.append(bg_error_entry)  
 
         # ガウシアンのパラメータの誤差        
@@ -128,7 +191,7 @@ class FittingTool:
             # 各ガウシアンの誤差表示用エントリボックス (readonly)
             for j in range(3):
                 error_entry = ttk.Entry(self.root, width=10, state="readonly")
-                error_entry.grid(row=3 + i, column=7 + j, padx=5, pady=5)
+                error_entry.grid(row=3 + i, column=self.columnshift+5+j, padx=5, pady=5)
                 row_errors.append(error_entry)
             self.error_entries.append(row_errors)
             
@@ -139,17 +202,18 @@ class FittingTool:
         ttk.Label(self.root, text="Center").grid(row=2, column=6)
         ttk.Label(self.root, text="G_FWHM").grid(row=2, column=7)
         ttk.Label(self.root, text="L_FWHM").grid(row=2, column=8)
-        ttk.Label(self.root, text="Error (Area)").grid(row=2, column=9)
-        ttk.Label(self.root, text="Error (Center)").grid(row=2, column=10)
-        ttk.Label(self.root, text="Error (G_FWHM)").grid(row=2, column=11)
-        ttk.Label(self.root, text="Error (L_FWHM)").grid(row=2, column=12)
+        ttk.Label(self.root, text="Error (G_ratio)").grid(row=2, column=9)
+        ttk.Label(self.root, text="Error (Area)").grid(row=2, column=10)
+        ttk.Label(self.root, text="Error (Center)").grid(row=2, column=11)
+        ttk.Label(self.root, text="Error (G_FWHM)").grid(row=2, column=12)
+        ttk.Label(self.root, text="Error (L_FWHM)").grid(row=2, column=13)
         """
-        ttk.Label(self.root, text="Area").grid(row=2, column=4)
-        ttk.Label(self.root, text="Center").grid(row=2, column=5)
-        ttk.Label(self.root, text="FWHM").grid(row=2, column=6)
-        ttk.Label(self.root, text="Error (Area)").grid(row=2, column=7)
-        ttk.Label(self.root, text="Error (Center)").grid(row=2, column=8)
-        ttk.Label(self.root, text="Error (FWHM)").grid(row=2, column=9)
+        ttk.Label(self.root, text="Area").grid(row=2, column=self.columnshift+2)
+        ttk.Label(self.root, text="Center").grid(row=2, column=self.columnshift+3)
+        ttk.Label(self.root, text="FWHM").grid(row=2, column=self.columnshift+4)
+        ttk.Label(self.root, text="Error (Area)").grid(row=2, column=self.columnshift+5)
+        ttk.Label(self.root, text="Error (Center)").grid(row=2, column=self.columnshift+6)
+        ttk.Label(self.root, text="Error (FWHM)").grid(row=2, column=self.columnshift+7)
     
     def toggle_entry_state(self):
         """ チェックボックスの状態に応じてエントリの有効化・無効化 """
@@ -244,6 +308,10 @@ class FittingTool:
             return float(param), False  # 固定しない値として設定
 
     def plot_fitted_curve(self, x_data, result):
+        # 現在の軸範囲を取得
+        x_min, x_max = self.ax.get_xlim()
+        y_min, y_max = self.ax.get_ylim()
+        
         self.ax.clear()
         """ フィッティング結果をプロットに追加 """
         # バックグラウンドのフィット
@@ -276,6 +344,11 @@ class FittingTool:
         self.ax.errorbar(x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars", color='blue')
         self.ax.plot(x_data, y_fit, label="Fitted curve", color='red')
         self.ax.legend()
+        
+        # 軸範囲を再設定
+        self.ax.set_xlim(x_min, x_max)
+        self.ax.set_ylim(y_min, y_max)
+        
         self.canvas.draw()
 
     def display_fit_results(self, result, bg_a_fixed, bg_b_fixed, bg_c_fixed, peak_params):
