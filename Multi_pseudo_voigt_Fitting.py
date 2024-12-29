@@ -133,6 +133,7 @@ class FittingTool:
             self.error_entries.append(row_errors)
             
         # パラメータのラベル
+        """
         ttk.Label(self.root, text="G_ratio").grid(row=2, column=4)
         ttk.Label(self.root, text="Area").grid(row=2, column=5)
         ttk.Label(self.root, text="Center").grid(row=2, column=6)
@@ -142,6 +143,13 @@ class FittingTool:
         ttk.Label(self.root, text="Error (Center)").grid(row=2, column=10)
         ttk.Label(self.root, text="Error (G_FWHM)").grid(row=2, column=11)
         ttk.Label(self.root, text="Error (L_FWHM)").grid(row=2, column=12)
+        """
+        ttk.Label(self.root, text="Area").grid(row=2, column=4)
+        ttk.Label(self.root, text="Center").grid(row=2, column=5)
+        ttk.Label(self.root, text="FWHM").grid(row=2, column=6)
+        ttk.Label(self.root, text="Error (Area)").grid(row=2, column=7)
+        ttk.Label(self.root, text="Error (Center)").grid(row=2, column=8)
+        ttk.Label(self.root, text="Error (FWHM)").grid(row=2, column=9)
     
     def toggle_entry_state(self):
         """ チェックボックスの状態に応じてエントリの有効化・無効化 """
