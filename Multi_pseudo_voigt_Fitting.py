@@ -469,6 +469,10 @@ class FittingTool:
 
             with open(filename, mode='w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
+                
+                # χ²（カイ二乗）の値を書き込む
+                chi2_value = result.redchi  # χ²の値を取得
+                writer.writerow(['Chi-squared', chi2_value, ''])
 
                 # フィッティングパラメータを書き込み
                 writer.writerow(['Parameter', 'Value', 'Error'])
