@@ -11,7 +11,7 @@ __version__ = '1.1.0'
 class FittingTool:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"Multi Pseudo Voigt Fitting    ver: {__version__}")
+        self.root.title(f"Multi Gaussian Fitting    ver: {__version__}")
         
         # UI要素の初期化
         self.init_ui()
@@ -312,16 +312,20 @@ class FittingTool:
         x_min, x_max = self.ax.get_xlim()
         y_min, y_max = self.ax.get_ylim()
         
+        # fittingのデータを滑らかにする。
+        fit_x_data = np.arange(np.min(x_data), np.max(x_data), (np.max(x_data) - np.min(x_data))/(10*len(x_data)))
+        self.fit_x_data = fit_x_data
+        
         self.ax.clear()
         """ フィッティング結果をプロットに追加 """
         # バックグラウンドのフィット
         bg_a = result.params['bg_a'].value
         bg_b = result.params['bg_b'].value
         bg_c = result.params['bg_c'].value
-        y_fit = bg_a + bg_b * x_data + bg_c * x_data**2
+        y_fit = bg_a + bg_b * fit_x_data + bg_c * fit_x_data**2
 
         # バックグラウンド関数を破線でプロット
-        self.ax.plot(x_data, y_fit, 'r--', label="Background fit", color='yellow')
+        self.ax.plot(fit_x_data, y_fit, 'r--', label="Background fit", color='yellow')
 
         # 各ピークのガウスフィット
         for i in range(10):
@@ -331,18 +335,18 @@ class FittingTool:
                 wid = result.params[f'wid_{i+1}'].value
 
                 # ガウス曲線を計算
-                peak_y = amp * np.exp(-4 * np.log(2) * ((x_data - cen) / wid)**2) / (wid * (np.pi/(4 * np.log(2)))**(1/2))
-                peak_yandBG = bg_a + bg_b * x_data + bg_c * x_data**2 + peak_y
+                peak_y = amp * np.exp(-4 * np.log(2) * ((fit_x_data - cen) / wid)**2) / (wid * (np.pi/(4 * np.log(2)))**(1/2))
+                peak_yandBG = bg_a + bg_b * fit_x_data + bg_c * fit_x_data**2 + peak_y
 
                 # 個別のピーク関数を破線でプロット
-                self.ax.plot(x_data, peak_yandBG, 'b--', label=f"Gaussian {i+1} fit", color='black')
+                self.ax.plot(fit_x_data, peak_yandBG, 'b--', label=f"Gaussian {i+1} fit", color='black')
 
                 # フィット曲線に加算
                 y_fit += peak_y
 
         # グラフを更新
         self.ax.errorbar(x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars", color='blue')
-        self.ax.plot(x_data, y_fit, label="Fitted curve", color='red')
+        self.ax.plot(fit_x_data, y_fit, label="Fitted curve", color='red')
         self.ax.legend()
         
         # 軸範囲を再設定
@@ -383,20 +387,18 @@ class FittingTool:
         for i in range(10):
             if self.checkboxes[i].get():
                 # 各ピークの結果をエントリに設定
-                
                 amp = result.params[f'amp_{i+1}'].value
                 cen = result.params[f'cen_{i+1}'].value
                 wid = result.params[f'wid_{i+1}'].value
                 
-                
                 # cが付いている場合、末尾に 'c' を追加して表示
-                cen_value, cen_fixed = peak_params[f'cen_{i+1}']
                 amp_value, amp_fixed = peak_params[f'amp_{i+1}']
+                cen_value, cen_fixed = peak_params[f'cen_{i+1}']
                 wid_value, wid_fixed = peak_params[f'wid_{i+1}']
 
                 # 'c'が付いている場合、末尾に 'c' を追加して表示
-                cen_str = f"{cen:.4f}" + ('c' if cen_fixed else '')
                 amp_str = f"{amp:.4f}" + ('c' if amp_fixed else '')
+                cen_str = f"{cen:.4f}" + ('c' if cen_fixed else '')
                 wid_str = f"{wid:.4f}" + ('c' if wid_fixed else '')
 
                 # 結果をエントリに設定
@@ -448,15 +450,16 @@ class FittingTool:
             x_data = self.x_data
             y_data = self.y_data
             yerr_data = self.y_error
+            x_fit = self.fit_x_data
 
             # フィッティング曲線の計算
-            y_fit = self.calculate_fit_curve(x_data, fit_params)
+            y_fit = self.calculate_fit_curve(x_fit, fit_params)
 
             # バックグラウンド曲線の計算
-            y_bg = self.calculate_background_curve(x_data, fit_params)
+            y_bg = self.calculate_background_curve(x_fit, fit_params)
 
             # 各ガウシアン曲線の計算
-            gaussian_curves = self.calculate_gaussian_curves(x_data, fit_params)
+            gaussian_curves = self.calculate_gaussian_curves(x_fit, fit_params)
 
             # 保存ダイアログ
             filename = filedialog.asksaveasfilename(defaultextension=".csv",
@@ -476,14 +479,18 @@ class FittingTool:
                 writer.writerow([])
 
                 # データヘッダを書き込み
-                header = ['x_data', 'y_data', 'yerr_data' , 'y_fit', 'y_bg']
+                header = ['x_data', 'y_data', 'yerr_data' , 'x_fit' , 'y_fit', 'y_bg']
                 header += [f'gaussian_{i+1}' for i in range(len(gaussian_curves))]
                 writer.writerow(header)
 
                 # データを行ごとに書き込み
-                for i, x in enumerate(x_data):
-                    row = [x, y_data[i], yerr_data[i], y_fit[i], y_bg[i]]
-                    row += [gaussian[i] for gaussian in gaussian_curves]
+                for i, x in enumerate(x_fit):
+                    if i < len(x_data):
+                        row = [x_data[i], y_data[i], yerr_data[i], x_fit[i] , y_fit[i], y_bg[i]]
+                        row += [gaussian[i] for gaussian in gaussian_curves]
+                    elif i >= len(x_data):
+                        row = ["", "", "" , x_fit[i] , y_fit[i], y_bg[i]]
+                        row += [gaussian[i] for gaussian in gaussian_curves]
                     writer.writerow(row)
 
             messagebox.showinfo("保存完了", "フィッティング結果と曲線を保存しました。")
@@ -526,7 +533,7 @@ class FittingTool:
                 amplitude = params[amp_key].value
                 center = params[cen_key].value
                 width = params[wid_key].value
-                gaussian = amplitude * np.exp(-((x - center)**2) / (2 * (width**2)))
+                gaussian = amplitude * np.exp(-4 * np.log(2) * ((x - center) / width)**2)/ (width * (np.pi/(4 * np.log(2)))**(1/2))
                 gaussian_sum += gaussian
 
         return background + gaussian_sum
@@ -545,7 +552,7 @@ class FittingTool:
                 center = params[cen_key].value
                 width = params[wid_key].value
                 gaussian = [
-                    amplitude * np.exp(-((x - center)**2) / (2 * (width**2))) for x in x_data
+                    amplitude * np.exp(-4 * np.log(2) * ((x - center) / width)**2)/ (width * (np.pi/(4 * np.log(2)))**(1/2)) for x in x_data
                 ]
                 gaussians.append(gaussian)
         return gaussians
