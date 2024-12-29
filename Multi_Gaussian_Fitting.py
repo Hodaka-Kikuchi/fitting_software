@@ -556,4 +556,4 @@ if __name__ == "__main__":
     root.mainloop()
 
 # cd C:\DATA_HK\python\fitting_software
-# pyinstaller -F --noconsole  Multi_pseudo_voigt_Fitting.py
+# pyinstaller -F --noconsole  Multi_Gaussian_Fitting.py
