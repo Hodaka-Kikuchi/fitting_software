@@ -109,7 +109,7 @@ class FittingTool:
         for entry in self.range_entries:
             entry.bind("<FocusOut>", lambda event: self.update_axis_range())
             entry.bind("<Return>", lambda event: self.update_axis_range())
-
+            
     def load_csv(self):
         file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
         if not file_path:
@@ -226,7 +226,145 @@ class FittingTool:
             apply_button.grid(row=max_preview_rows + 6, column=0, columnspan=len(header), pady=10)
 
         except Exception as e:
+            messagebox.showerror("Error", f"Failed to load CSV file: {e}")            
+
+    """
+    # データを全部表示する方が良いと思って作成したが思いのほか使い勝手が悪い。
+    def load_csv(self):
+        file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
+        if not file_path:
+            return
+
+        try:
+            # CSVファイルを読み込む
+            with open(file_path, 'r', newline='') as f:
+                reader = csv.reader(f)
+                view_data = list(reader)
+
+            # ヘッダー行とデータ行を分離
+            header = view_data[0]
+            rows = view_data[1:]
+
+            # 別ウィンドウでデータプレビューと列選択
+            column_selector = tk.Toplevel(self.root)
+            column_selector.title("Select Columns for Data")
+
+            # キャンバスとスクロールバーを作成
+            canvas = tk.Canvas(column_selector)
+            scrollbar = tk.Scrollbar(column_selector, orient="vertical", command=canvas.yview)
+            scrollable_frame = tk.Frame(canvas)
+
+            # スクロール可能なフレームの設定
+            scrollable_frame.bind(
+                "<Configure>",
+                lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            )
+
+            # キャンバスにフレームを配置
+            canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+            canvas.configure(yscrollcommand=scrollbar.set)
+
+            # スクロールバーの配置
+            scrollbar.pack(side="right", fill="y")
+            canvas.pack(side="left", fill="both", expand=True)
+
+            # 列番号を表示
+            for col_index in range(len(header)):
+                tk.Label(scrollable_frame, text=str(col_index + 1), font=("Arial", 10, "bold"), bg="lightgray", borderwidth=1, relief="solid").grid(row=0, column=col_index, sticky="nsew", padx=2, pady=2)
+
+            # ヘッダーを表示
+            for col_index, col_name in enumerate(header):
+                tk.Label(scrollable_frame, text=col_name, font=("Arial", 10, "bold"), borderwidth=1, relief="solid").grid(row=1, column=col_index, sticky="nsew", padx=2, pady=2)
+
+            # データをスクロール可能な領域に表示
+            for row_index, row in enumerate(rows, start=2):
+                for col_index, value in enumerate(row):
+                    tk.Label(scrollable_frame, text=value, borderwidth=1, relief="solid").grid(row=row_index, column=col_index, sticky="nsew", padx=2, pady=2)
+
+            # 列選択エントリ
+            tk.Label(scrollable_frame, text="X Column Index :").grid(row=len(rows) + 2, column=0, columnspan=2, pady=5, sticky="w")
+            x_entry = tk.Entry(scrollable_frame)
+            x_entry.grid(row=len(rows) + 2, column=2, columnspan=2, pady=5, sticky="w")
+            
+            tk.Label(scrollable_frame, text="Y Column Index :").grid(row=len(rows) + 3, column=0, columnspan=2, pady=5, sticky="w")
+            y_entry = tk.Entry(scrollable_frame)
+            y_entry.grid(row=len(rows) + 3, column=2, columnspan=2, pady=5, sticky="w")
+            
+            tk.Label(scrollable_frame, text="Yerror Column Index :").grid(row=len(rows) + 4, column=0, columnspan=2, pady=5, sticky="w")
+            err_entry = tk.Entry(scrollable_frame)
+            err_entry.grid(row=len(rows) + 4, column=2, columnspan=2, pady=5, sticky="w")
+
+            # 適用ボタン
+            def apply_selection():
+                try:
+                    # ユーザーの入力を取得
+                    x_col = int(float(x_entry.get())) - 1
+                    y_col = int(float(y_entry.get())) - 1
+                    err_col = int(float(err_entry.get())) - 1
+
+                    # ヘッダーをグラフの軸として表示する
+                    self.X_title = header[x_col]
+                    self.Y_title = header[y_col]
+
+                    # 動的に列データを抽出（数値に変換）
+                    self.x_data = np.array([float(row[x_col]) if len(row) > x_col and row[x_col] != '' and row[x_col] != 'nan' else np.nan for row in rows])
+                    self.y_data = np.array([float(row[y_col]) if len(row) > y_col and row[y_col] != '' and row[y_col] != 'nan' else np.nan for row in rows])
+                    self.y_error = np.array([float(row[err_col]) if len(row) > err_col and row[err_col] != '' and row[err_col] != 'nan' else np.nan for row in rows])
+
+                    # y_error が 1e-10 以下の場合は 1 に置き換え
+                    self.y_error = np.where(self.y_error <= 1e-10, 1, self.y_error)
+
+                    # NaNが含まれている行を削除するためのインデックス作成
+                    valid_indices = ~np.isnan(self.y_data)  # y_data が NaN でない行を True にするマスク
+
+                    # x_data, y_data, y_error をフィルタリング
+                    self.x_data = self.x_data[valid_indices]
+                    self.y_data = self.y_data[valid_indices]
+                    self.y_error = self.y_error[valid_indices]
+
+                    # プロットを更新
+                    self.ax.clear()
+                    self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars", color='blue')
+                    self.ax.legend()
+                    self.ax.set_xlabel(self.X_title)
+                    self.ax.set_ylabel(self.Y_title)
+                    self.canvas.draw()
+
+                    # range_entriesを更新
+                    self.range_entries[0].delete(0, tk.END)
+                    self.range_entries[0].insert(0, f"{np.max(self.y_data):.4f}")
+                    self.range_entries[1].delete(0, tk.END)
+                    self.range_entries[1].insert(0, f"{np.min(self.y_data):.4f}")
+                    self.range_entries[2].delete(0, tk.END)
+                    self.range_entries[2].insert(0, f"{np.min(self.x_data):.4f}")
+                    self.range_entries[3].delete(0, tk.END)
+                    self.range_entries[3].insert(0, f"{np.max(self.x_data):.4f}")
+
+                    # 列選択ウィンドウを閉じる
+                    column_selector.destroy()
+
+                except Exception as e:
+                    messagebox.showerror("Error", f"Invalid column selection: {e}")
+
+            apply_button = tk.Button(scrollable_frame, text="Apply", command=apply_selection)
+            apply_button.grid(row=len(rows) + 6, column=0, columnspan=len(header), pady=10)
+
+            # ウィンドウサイズを自動調整
+            column_selector.update_idletasks()
+            width = max((len(header) + 1) * 100, 600)  # 列数に基づく幅の設定
+            height = min(len(rows) * 25, 600)  # 行数に基づく高さの設定
+            column_selector.geometry(f"{width}x{height}")
+
+            # キャンバスでマウススクロールを操作できるようにする
+            def on_mouse_wheel(event):
+                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+            canvas.bind_all("<MouseWheel>", on_mouse_wheel)
+
+        except Exception as e:
             messagebox.showerror("Error", f"Failed to load CSV file: {e}")
+            
+    """
         
     def create_entry_widgets(self):
         self.entries = []
