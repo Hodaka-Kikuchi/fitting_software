@@ -34,19 +34,19 @@ class FittingTool:
         # 軸領域用エントリーボックス
         self.range_entries = []
         ttk.Label(self.root, text="Ymax").grid(row=1, column=0, sticky="NSEW")
-        range_entry = ttk.Entry(self.root, width=10, state="normal")
+        range_entry = ttk.Entry(self.root, state="normal", width=10)
         range_entry.grid(row=2, column=0, sticky="NSEW")
         self.range_entries.append(range_entry) 
         ttk.Label(self.root, text="Ymin").grid(row=self.rowshift-2, column=0, sticky="NSEW")
-        range_entry = ttk.Entry(self.root, width=10, state="normal")
+        range_entry = ttk.Entry(self.root, state="normal", width=10)
         range_entry.grid(row=self.rowshift-1, column=0, sticky="NSEW")
         self.range_entries.append(range_entry) 
         ttk.Label(self.root, text="Xmin").grid(row=self.rowshift, column=1, sticky="NSEW")
-        range_entry = ttk.Entry(self.root, width=10, state="normal")
+        range_entry = ttk.Entry(self.root, state="normal", width=10)
         range_entry.grid(row=self.rowshift, column=2, sticky="NSEW")
         self.range_entries.append(range_entry) 
         ttk.Label(self.root, text="Xmax").grid(row=self.rowshift, column=self.columnshift-2, sticky="NSEW")
-        range_entry = ttk.Entry(self.root, width=10, state="normal")
+        range_entry = ttk.Entry(self.root, state="normal", width=10)
         range_entry.grid(row=self.rowshift, column=self.columnshift-1, sticky="NSEW")
         self.range_entries.append(range_entry) 
         
@@ -137,7 +137,6 @@ class FittingTool:
             self.range_entries[2].insert(0, f"{np.min(self.x_data):.4f}")
             self.range_entries[3].delete(0, tk.END)
             self.range_entries[3].insert(0, f"{np.max(self.x_data):.4f}")
-            
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load CSV file: {e}")
@@ -162,7 +161,7 @@ class FittingTool:
         # χ^2を表示する
         self.X2_entry = []
         ttk.Label(self.root, text="χ^2").grid(row=0, column=self.columnshift+1, sticky="NSEW")
-        X2_entry = ttk.Entry(self.root, width=10, state="readonly")
+        X2_entry = ttk.Entry(self.root, state="readonly", width=10)
         X2_entry.grid(row=1, column=self.columnshift+1, sticky="NSEW")
         self.X2_entry.append(X2_entry) 
         
@@ -187,7 +186,7 @@ class FittingTool:
         # 誤差表示用エントリボックスをリストに追加
         for i, label in enumerate(self.bg_err_labels):
             ttk.Label(self.root, text=label).grid(row=0, column=self.columnshift+5+i, sticky="NSEW")
-            bg_error_entry = ttk.Entry(self.root, width=10, state="readonly")
+            bg_error_entry = ttk.Entry(self.root, state="readonly", width=10)
             bg_error_entry.grid(row=1, column=self.columnshift+5+i, sticky="NSEW")
             self.bg_errors.append(bg_error_entry)  
 
@@ -196,7 +195,7 @@ class FittingTool:
             row_errors = []
             # 各ガウシアンの誤差表示用エントリボックス (readonly)
             for j in range(3):
-                error_entry = ttk.Entry(self.root, width=10, state="readonly")
+                error_entry = ttk.Entry(self.root, state="readonly", width=10)
                 error_entry.grid(row=3 + i, column=self.columnshift+5+j, sticky="NSEW")
                 row_errors.append(error_entry)
             self.error_entries.append(row_errors)
@@ -214,12 +213,12 @@ class FittingTool:
         ttk.Label(self.root, text="Error (G_FWHM)").grid(row=2, column=12)
         ttk.Label(self.root, text="Error (L_FWHM)").grid(row=2, column=13)
         """
-        ttk.Label(self.root, text="Area").grid(row=2, column=self.columnshift+2)
-        ttk.Label(self.root, text="Center").grid(row=2, column=self.columnshift+3)
-        ttk.Label(self.root, text="FWHM").grid(row=2, column=self.columnshift+4)
-        ttk.Label(self.root, text="Error (Area)").grid(row=2, column=self.columnshift+5)
-        ttk.Label(self.root, text="Error (Center)").grid(row=2, column=self.columnshift+6)
-        ttk.Label(self.root, text="Error (FWHM)").grid(row=2, column=self.columnshift+7)
+        ttk.Label(self.root, text="Area").grid(row=2, column=self.columnshift+2, sticky="NSEW")
+        ttk.Label(self.root, text="Center").grid(row=2, column=self.columnshift+3, sticky="NSEW")
+        ttk.Label(self.root, text="FWHM").grid(row=2, column=self.columnshift+4, sticky="NSEW")
+        ttk.Label(self.root, text="Error (Area)").grid(row=2, column=self.columnshift+5, sticky="NSEW")
+        ttk.Label(self.root, text="Error (Center)").grid(row=2, column=self.columnshift+6, sticky="NSEW")
+        ttk.Label(self.root, text="Error (FWHM)").grid(row=2, column=self.columnshift+7, sticky="NSEW")
     
     def toggle_entry_state(self):
         """ チェックボックスの状態に応じてエントリの有効化・無効化 """

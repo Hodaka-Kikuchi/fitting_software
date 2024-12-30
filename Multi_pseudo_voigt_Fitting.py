@@ -34,19 +34,19 @@ class FittingTool:
         # 軸領域用エントリーボックス
         self.range_entries = []
         ttk.Label(self.root, text="Ymax").grid(row=1, column=0, sticky="NSEW")
-        range_entry = ttk.Entry(self.root, width=10, state="normal")
+        range_entry = ttk.Entry(self.root, state="normal", width=10)
         range_entry.grid(row=2, column=0, sticky="NSEW")
         self.range_entries.append(range_entry) 
         ttk.Label(self.root, text="Ymin").grid(row=self.rowshift-2, column=0, sticky="NSEW")
-        range_entry = ttk.Entry(self.root, width=10, state="normal")
+        range_entry = ttk.Entry(self.root, state="normal", width=10)
         range_entry.grid(row=self.rowshift-1, column=0, sticky="NSEW")
         self.range_entries.append(range_entry) 
         ttk.Label(self.root, text="Xmin").grid(row=self.rowshift, column=1, sticky="NSEW")
-        range_entry = ttk.Entry(self.root, width=10, state="normal")
+        range_entry = ttk.Entry(self.root, state="normal", width=10)
         range_entry.grid(row=self.rowshift, column=2, sticky="NSEW")
         self.range_entries.append(range_entry) 
         ttk.Label(self.root, text="Xmax").grid(row=self.rowshift, column=self.columnshift-2, sticky="NSEW")
-        range_entry = ttk.Entry(self.root, width=10, state="normal")
+        range_entry = ttk.Entry(self.root, state="normal", width=10)
         range_entry.grid(row=self.rowshift, column=self.columnshift-1, sticky="NSEW")
         self.range_entries.append(range_entry) 
         
@@ -117,31 +117,117 @@ class FittingTool:
 
         try:
             # CSVファイルを読み込む
-            data = np.loadtxt(file_path, delimiter=",", skiprows=1)
-            self.x_data = data[:, 0]
-            self.y_data = data[:, 1]
-            self.y_error = data[:, 2]
+            with open(file_path, 'r', newline='') as f:
+                reader = csv.reader(f)
+                view_data = list(reader)
 
-            # プロットを更新
-            self.ax.clear()
-            self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars", color='blue')
-            self.ax.legend()
-            self.canvas.draw()
+            # ヘッダー行とデータ行を分離
+            header = view_data[0]
+            rows = view_data[1:]
+
+            # 別ウィンドウでデータプレビューと列選択
+            column_selector = tk.Toplevel(self.root)
+            column_selector.title("Select Columns for Data")
+
+            # 列番号を表示
+            for col_index in range(len(header)):
+                tk.Label(column_selector, text=str(col_index + 1), font=("Arial", 10, "bold"), bg="lightgray", borderwidth=1, relief="solid").grid(row=0, column=col_index, sticky="nsew", padx=2, pady=2)
+
+            # ヘッダーを表示
+            for col_index, col_name in enumerate(header):
+                tk.Label(column_selector, text=col_name, font=("Arial", 10, "bold"), borderwidth=1, relief="solid").grid(row=1, column=col_index, sticky="nsew", padx=2, pady=2)
             
-            # axis rangeを自動入力
-            self.range_entries[0].delete(0, tk.END)
-            self.range_entries[0].insert(0, f"{np.max(self.y_data):.4f}")
-            self.range_entries[1].delete(0, tk.END)
-            self.range_entries[1].insert(0, f"{np.min(self.y_data):.4f}")
-            self.range_entries[2].delete(0, tk.END)
-            self.range_entries[2].insert(0, f"{np.min(self.x_data):.4f}")
-            self.range_entries[3].delete(0, tk.END)
-            self.range_entries[3].insert(0, f"{np.max(self.x_data):.4f}")
+            # データプレビューを表示（最大10行）
+            max_preview_rows = 10
+            for row_index, row in enumerate(rows[:max_preview_rows], start=2):
+                for col_index, value in enumerate(row):
+                    tk.Label(column_selector, text=value, borderwidth=1, relief="solid").grid(row=row_index, column=col_index, sticky="nsew", padx=2, pady=2)
+
+            # 列選択エントリ
+            tk.Label(column_selector, text="X Column Index :").grid(row=max_preview_rows + 2, column=0, columnspan=2, pady=5, sticky="w")
+            x_entry = tk.Entry(column_selector)
+            x_entry.grid(row=max_preview_rows + 2, column=2, columnspan=2, pady=5, sticky="w")
             
+            tk.Label(column_selector, text="Y Column Index :").grid(row=max_preview_rows + 3, column=0, columnspan=2, pady=5, sticky="w")
+            y_entry = tk.Entry(column_selector)
+            y_entry.grid(row=max_preview_rows + 3, column=2, columnspan=2, pady=5, sticky="w")
+            
+            tk.Label(column_selector, text="Yerror Column Index :").grid(row=max_preview_rows + 4, column=0, columnspan=2, pady=5, sticky="w")
+            err_entry = tk.Entry(column_selector)
+            err_entry.grid(row=max_preview_rows + 4, column=2, columnspan=2, pady=5, sticky="w")
+
+            # 適用ボタン
+            def apply_selection():
+                try:
+                    # ユーザーの入力を取得
+                    x_col = int(float(x_entry.get())) - 1
+                    y_col = int(float(y_entry.get())) - 1
+                    err_col = int(float(err_entry.get())) - 1
+                    
+                    # ヘッダーをグラフの軸として表示する
+                    self.X_title = header[x_col]
+                    self.Y_title = header[y_col]
+
+                    # 動的に列データを抽出（数値に変換
+                    #self.x_data = [float(row[x_col]) if len(row) > x_col and row[x_col] != '' else None for row in rows]
+                    #self.y_data = [float(row[y_col]) if len(row) > y_col and row[y_col] != '' else None for row in rows]
+                    #self.y_error = [float(row[err_col]) if len(row) > err_col and row[err_col] != '' else None for row in rows]
+                    
+                    #np.array([float(row[x_col]) if len(row) > x_col and row[x_col] != '' and row[x_col] != 'nan' else None for row in rows])
+                    
+                    self.x_data = np.array([float(row[x_col]) if len(row) > x_col and row[x_col] != '' and row[x_col] != 'nan' else np.nan for row in rows])
+                    self.y_data = np.array([float(row[y_col]) if len(row) > y_col and row[y_col] != '' and row[y_col] != 'nan' else np.nan for row in rows])
+                    self.y_error = np.array([float(row[err_col]) if len(row) > err_col and row[err_col] != '' and row[err_col] != 'nan' else np.nan for row in rows])
+                    # y_error が 1e-10 以下の場合は 1 に置き換え
+                    self.y_error = np.where(self.y_error <= 1e-10, 1, self.y_error)
+                    
+                    # NaNが含まれている行を削除するためのインデックス作成
+                    valid_indices = ~np.isnan(self.y_data)  # y_data が NaN でない行を True にするマスク
+
+                    # x_data, y_data, y_error をフィルタリング
+                    self.x_data = self.x_data[valid_indices]
+                    self.y_data = self.y_data[valid_indices]
+                    self.y_error = self.y_error[valid_indices]
+
+                    # y_data に nan が含まれている行を削除
+                    #valid_indices = ~np.isnan(self.y_data)  # y_data が nan でない行を True にするマスクを作成
+
+                    # x_data, y_data, y_error をマスクでフィルタリング
+                    #self.x_data = self.x_data[valid_indices]
+                    #self.y_data = self.y_data[valid_indices]
+                    #self.y_error = self.y_error[valid_indices]
+
+                    # プロットを更新
+                    self.ax.clear()
+                    self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars", color='blue')
+                    self.ax.legend()
+                    # x 軸のラベルを設定する。
+                    self.ax.set_xlabel(self.X_title)
+                    # y 軸のラベルを設定する。
+                    self.ax.set_ylabel(self.Y_title)
+                    self.canvas.draw()
+                    
+                    # axis rangeを自動入力
+                    self.range_entries[0].delete(0, tk.END)
+                    self.range_entries[0].insert(0, f"{np.max(self.y_data):.4f}")
+                    self.range_entries[1].delete(0, tk.END)
+                    self.range_entries[1].insert(0, f"{np.min(self.y_data):.4f}")
+                    self.range_entries[2].delete(0, tk.END)
+                    self.range_entries[2].insert(0, f"{np.min(self.x_data):.4f}")
+                    self.range_entries[3].delete(0, tk.END)
+                    self.range_entries[3].insert(0, f"{np.max(self.x_data):.4f}")
+
+                    # 列選択ウィンドウを閉じる
+                    column_selector.destroy()
+                except Exception as e:
+                    messagebox.showerror("Error", f"Invalid column selection: {e}")
+
+            apply_button = tk.Button(column_selector, text="Apply", command=apply_selection)
+            apply_button.grid(row=max_preview_rows + 6, column=0, columnspan=len(header), pady=10)
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load CSV file: {e}")
-
+        
     def create_entry_widgets(self):
         self.entries = []
         self.bg_entries = []
@@ -162,7 +248,7 @@ class FittingTool:
         # χ^2を表示する
         self.X2_entry = []
         ttk.Label(self.root, text="χ^2").grid(row=0, column=self.columnshift+1, sticky="NSEW")
-        X2_entry = ttk.Entry(self.root, width=10, state="readonly")
+        X2_entry = ttk.Entry(self.root, state="readonly", width=10)
         X2_entry.grid(row=1, column=self.columnshift+1, sticky="NSEW")
         self.X2_entry.append(X2_entry) 
         
@@ -187,7 +273,7 @@ class FittingTool:
         # 誤差表示用エントリボックスをリストに追加
         for i, label in enumerate(self.bg_err_labels):
             ttk.Label(self.root, text=label).grid(row=0, column=self.columnshift+5+i, sticky="NSEW")
-            bg_error_entry = ttk.Entry(self.root, width=10, state="readonly")
+            bg_error_entry = ttk.Entry(self.root, state="readonly", width=10)
             bg_error_entry.grid(row=1, column=self.columnshift+5+i, sticky="NSEW")
             self.bg_errors.append(bg_error_entry)  
 
@@ -196,7 +282,7 @@ class FittingTool:
             row_errors = []
             # 各ガウシアンの誤差表示用エントリボックス (readonly)
             for j in range(3):
-                error_entry = ttk.Entry(self.root, width=10, state="readonly")
+                error_entry = ttk.Entry(self.root, state="readonly", width=10)
                 error_entry.grid(row=3 + i, column=self.columnshift+5+j, sticky="NSEW")
                 row_errors.append(error_entry)
             self.error_entries.append(row_errors)
@@ -214,12 +300,12 @@ class FittingTool:
         ttk.Label(self.root, text="Error (G_FWHM)").grid(row=2, column=12)
         ttk.Label(self.root, text="Error (L_FWHM)").grid(row=2, column=13)
         """
-        ttk.Label(self.root, text="Area").grid(row=2, column=self.columnshift+2)
-        ttk.Label(self.root, text="Center").grid(row=2, column=self.columnshift+3)
-        ttk.Label(self.root, text="FWHM").grid(row=2, column=self.columnshift+4)
-        ttk.Label(self.root, text="Error (Area)").grid(row=2, column=self.columnshift+5)
-        ttk.Label(self.root, text="Error (Center)").grid(row=2, column=self.columnshift+6)
-        ttk.Label(self.root, text="Error (FWHM)").grid(row=2, column=self.columnshift+7)
+        ttk.Label(self.root, text="Area").grid(row=2, column=self.columnshift+2, sticky="NSEW")
+        ttk.Label(self.root, text="Center").grid(row=2, column=self.columnshift+3, sticky="NSEW")
+        ttk.Label(self.root, text="FWHM").grid(row=2, column=self.columnshift+4, sticky="NSEW")
+        ttk.Label(self.root, text="Error (Area)").grid(row=2, column=self.columnshift+5, sticky="NSEW")
+        ttk.Label(self.root, text="Error (Center)").grid(row=2, column=self.columnshift+6, sticky="NSEW")
+        ttk.Label(self.root, text="Error (FWHM)").grid(row=2, column=self.columnshift+7, sticky="NSEW")
     
     def toggle_entry_state(self):
         """ チェックボックスの状態に応じてエントリの有効化・無効化 """
@@ -277,12 +363,12 @@ class FittingTool:
                 peak_params[f'FWHM_{i+1}'] = (FWHM_value, FWHM_fixed)
             else:
                 continue
-
+        
         # フィットするデータ
         x_data = self.x_data
         y_data = self.y_data
         y_error = self.y_error
-
+        
         # lmfitの最小化処理
         pfit = Parameters()
 
@@ -358,6 +444,10 @@ class FittingTool:
         # 軸範囲を再設定
         self.ax.set_xlim(x_min, x_max)
         self.ax.set_ylim(y_min, y_max)
+        # x 軸のラベルを設定する。
+        self.ax.set_xlabel(self.X_title)
+        # y 軸のラベルを設定する。
+        self.ax.set_ylabel(self.Y_title)
         
         self.canvas.draw()
 
