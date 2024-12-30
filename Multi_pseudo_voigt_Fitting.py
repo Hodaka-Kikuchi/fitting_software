@@ -121,6 +121,9 @@ class FittingTool:
                 reader = csv.reader(f)
                 view_data = list(reader)
 
+             # ファイル名の表示
+            self.file_name = file_path.split('/')[-1]  # フルパスからファイル名だけを抽出
+            
             # ヘッダー行とデータ行を分離
             header = view_data[0]
             rows = view_data[1:]
@@ -199,8 +202,10 @@ class FittingTool:
 
                     # プロットを更新
                     self.ax.clear()
-                    self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars", color='blue')
+                    self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data", color='blue')
                     self.ax.legend()
+                    # タイトルを設定する。
+                    self.ax.set_title(f"Selected file: {self.file_name}")
                     # x 軸のラベルを設定する。
                     self.ax.set_xlabel(self.X_title)
                     # y 軸のラベルを設定する。
@@ -324,7 +329,7 @@ class FittingTool:
 
                     # プロットを更新
                     self.ax.clear()
-                    self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars", color='blue')
+                    self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data", color='blue')
                     self.ax.legend()
                     self.ax.set_xlabel(self.X_title)
                     self.ax.set_ylabel(self.Y_title)
@@ -575,13 +580,15 @@ class FittingTool:
                 y_fit += peak_y
 
         # グラフを更新
-        self.ax.errorbar(x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data with error bars", color='blue')
+        self.ax.errorbar(x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data", color='blue')
         self.ax.plot(fit_x_data, y_fit, label="Fitted curve", color='red')
         self.ax.legend()
         
         # 軸範囲を再設定
         self.ax.set_xlim(x_min, x_max)
         self.ax.set_ylim(y_min, y_max)
+        # タイトル
+        self.ax.set_title(f"Selected file: {self.file_name}")
         # x 軸のラベルを設定する。
         self.ax.set_xlabel(self.X_title)
         # y 軸のラベルを設定する。
