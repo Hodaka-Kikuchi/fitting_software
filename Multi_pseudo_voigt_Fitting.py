@@ -5,8 +5,9 @@ from tkinter import ttk, filedialog, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import csv
+from itertools import zip_longest
 
-__version__ = '1.3.0'
+__version__ = '1.3.1'
 
 class FittingTool:
     def __init__(self, root):
@@ -791,7 +792,8 @@ class FittingTool:
             y_bg = self.calculate_background_curve(x_fit, fit_params)
 
             # 各ガウシアン曲線の計算
-            gaussian_curves = self.calculate_gaussian_curves(x_fit, fit_params)
+            # gaussian_curves = self.calculate_gaussian_curves(x_fit, fit_params) # BG無
+            gaussian_curves = self.calculate_gaussian_and_BG_curves(x_fit, fit_params) # BG有
 
             # 保存ダイアログ
             filename = filedialog.asksaveasfilename(defaultextension=".csv",
@@ -804,31 +806,41 @@ class FittingTool:
                 
                 # χ²（カイ二乗）の値を書き込む
                 chi2_value = result.redchi  # χ²の値を取得
-                writer.writerow(['Chi-squared', chi2_value, ''])
-
-                # フィッティングパラメータを書き込み
-                writer.writerow(['Parameter', 'Value', 'Error'])
+                # Chi-squaredとパラメータ用のデータを準備
+                param_rows = [['Chi-squared', chi2_value, '']]
+                #param_rows.append(['Parameter', 'Value', 'Error'])
                 for param_name, param in fit_params.items():
-                    writer.writerow([param_name, param.value, param.stderr])
+                    param_rows.append([param_name, param.value, param.stderr])
 
-                # 空行を追加
-                writer.writerow([])
+                # データ列の準備
+                data_headers = ['','x_data', 'y_data', 'yerr_data', 'x_fit', 'y_fit', 'y_bg']  # 空列を追加
+                data_headers += [f'gaussian_{i + 1}' for i in range(len(gaussian_curves))]
 
-                # データヘッダを書き込み
-                header = ['x_data', 'y_data', 'yerr_data' , 'x_fit' , 'y_fit', 'y_bg']
-                header += [f'gaussian_{i+1}' for i in range(len(gaussian_curves))]
-                writer.writerow(header)
+                # 各データ列を同じ長さにするため調整
+                max_length = max(len(x_data), len(x_fit))
+                x_data = list(x_data) + [""] * (max_length - len(x_data))
+                y_data = list(y_data) + [""] * (max_length - len(y_data))
+                yerr_data = list(yerr_data) + [""] * (max_length - len(yerr_data))
+                x_fit = list(x_fit) + [""] * (max_length - len(x_fit))
+                y_fit = list(y_fit) + [""] * (max_length - len(y_fit))
+                y_bg = list(y_bg) + [""] * (max_length - len(y_bg))
+                gaussian_curves = [list(gaussian) + [""] * (max_length - len(gaussian)) for gaussian in gaussian_curves]
 
-                # データを行ごとに書き込み
-                for i, x in enumerate(x_fit):
-                    if i < len(x_data):
-                        row = [x_data[i], y_data[i], yerr_data[i], x_fit[i] , y_fit[i], y_bg[i]]
-                        row += [gaussian[i] for gaussian in gaussian_curves]
-                    elif i >= len(x_data):
-                        row = ["", "", "" , x_fit[i] , y_fit[i], y_bg[i]]
-                        row += [gaussian[i] for gaussian in gaussian_curves]
-                    writer.writerow(row)
+                # データ列を行ごとにまとめる
+                data_rows = list(zip(x_data, y_data, yerr_data, x_fit, y_fit, y_bg, *gaussian_curves))
 
+                # ヘッダー行を作成
+                header_row = ['Parameter', 'Value', 'Error'] + data_headers
+
+                # ヘッダー行を書き込み
+                writer.writerow(header_row)
+
+                # パラメータ行とデータ行を列方向に統合して書き込み
+                for i in range(max(max_length, len(param_rows))):
+                    param_part = param_rows[i] if i < len(param_rows) else [""] * 3
+                    data_part = list(data_rows[i]) if i < len(data_rows) else [""] * len(data_headers)
+                    writer.writerow(param_part + [""] + data_part)  # 空列を追加
+                
             messagebox.showinfo("Save Complete", "Fitting results and curves have been saved.")
 
         except Exception as e:
@@ -892,7 +904,26 @@ class FittingTool:
                 ]
                 gaussians.append(gaussian)
         return gaussians
-
+    
+    def calculate_gaussian_and_BG_curves(self, x_data, params):
+        bg_a = params['bg_a'].value
+        bg_b = params['bg_b'].value
+        bg_c = params['bg_c'].value
+        gaussians = []
+        for i in range(1, 11):  # 最大10個のガウシアンを想定
+            area_key = f'area_{i}'
+            center_key = f'center_{i}'
+            FWHM_key = f'FWHM_{i}'
+            if area_key in params and center_key in params and FWHM_key in params:
+                amplitude = params[area_key].value
+                center = params[center_key].value
+                width = params[FWHM_key].value
+                gaussian = [
+                    amplitude * np.exp(-4 * np.log(2) * ((x - center) / width)**2)/ (width * (np.pi/(4 * np.log(2)))**(1/2)) + bg_a + bg_b * x + bg_c * (x**2) for x in x_data
+                ]
+                gaussians.append(gaussian)
+        return gaussians
+    
 if __name__ == "__main__":
     root = tk.Tk()
     app = FittingTool(root)
