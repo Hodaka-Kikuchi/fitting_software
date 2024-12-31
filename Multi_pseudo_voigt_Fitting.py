@@ -17,13 +17,13 @@ class FittingTool:
         self.init_ui()
 
     def init_ui(self):
-        self.columnshift = 5
+        self.columnshift = 1+6
         self.rowshift = 13
         
         # グラフ表示用キャンバス
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvasTkAgg(self.figure, master=self.root)
-        self.canvas.get_tk_widget().grid(row=1, column=1, rowspan=self.rowshift-1, columnspan=self.columnshift-1, sticky="NSEW")
+        self.canvas.get_tk_widget().grid(row=2, column=1, rowspan=self.rowshift-2, columnspan=self.columnshift-1, sticky="NSEW")
         
         # ツールバーの作成と表示
         toolbar_frame = tk.Frame(self.root)  # ツールバー用のフレームを作成
@@ -33,9 +33,9 @@ class FittingTool:
         
         # 軸領域用エントリーボックス
         self.range_entries = []
-        ttk.Label(self.root, text="Ymax").grid(row=1, column=0, sticky="NSEW")
+        ttk.Label(self.root, text="Ymax").grid(row=2, column=0, sticky="NSEW")
         range_entry = ttk.Entry(self.root, state="normal", width=10)
-        range_entry.grid(row=2, column=0, sticky="NSEW")
+        range_entry.grid(row=3, column=0, sticky="NSEW")
         self.range_entries.append(range_entry) 
         ttk.Label(self.root, text="Ymin").grid(row=self.rowshift-2, column=0, sticky="NSEW")
         range_entry = ttk.Entry(self.root, state="normal", width=10)
@@ -51,16 +51,30 @@ class FittingTool:
         self.range_entries.append(range_entry) 
         
         # ファイル選択ボタン
+        self.file_button = ttk.Button(self.root, text="Load CSV (data view)", command=self.load_csv_data_view)
+        self.file_button.grid(row=0, column=2, sticky="NSEW")
+        
         self.file_button = ttk.Button(self.root, text="Load CSV", command=self.load_csv)
         self.file_button.grid(row=0, column=1, sticky="NSEW")
+        
+        # ファイルcolumnエントリーボックス
+        self.data_column_entry = []
+        data_column_lbl = ['X Column Index :','Y Column Index :','Yerror Column Index :']
+        for i in range(3):
+            ttk.Label(self.root, text=data_column_lbl[i]).grid(row=1, column=1+2*i, sticky="NSEW")
+            data_column_entry = ttk.Entry(self.root, state="normal", width=10)
+            data_column_entry.grid(row=1, column=2+2*i, sticky="NSEW")
+            data_column_entry.delete(0, tk.END)
+            data_column_entry.insert(0, int(i+1))
+            self.data_column_entry.append(data_column_entry) 
 
         # フィットボタン
         self.fit_button = ttk.Button(self.root, text="Fit", command=self.fit_data)
-        self.fit_button.grid(row=0, column=2, sticky="NSEW")
+        self.fit_button.grid(row=0, column=3, sticky="NSEW")
 
         # 保存ボタン
         self.save_button = ttk.Button(self.root, text="Save CSV", command=self.save_fitting_results)
-        self.save_button.grid(row=0, column=3, sticky="NSEW")
+        self.save_button.grid(row=0, column=4, sticky="NSEW")
 
         # エントリーボックス作成 (フィッティング用のエントリ)
         self.entries = []
@@ -109,8 +123,77 @@ class FittingTool:
         for entry in self.range_entries:
             entry.bind("<FocusOut>", lambda event: self.update_axis_range())
             entry.bind("<Return>", lambda event: self.update_axis_range())
-            
+    
+    # エントリーボックスの数値のcolumnをデータビュー無で読み込み
     def load_csv(self):
+        file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
+        if not file_path:
+            return
+
+        try:
+            # CSVファイルを読み込む
+            with open(file_path, 'r', newline='') as f:
+                reader = csv.reader(f)
+                view_data = list(reader)
+
+             # ファイル名の表示
+            self.file_name = file_path.split('/')[-1]  # フルパスからファイル名だけを抽出
+            
+            # ヘッダー行とデータ行を分離
+            header = view_data[0]
+            rows = view_data[1:]
+            
+            # columnを自動入力
+            x_col = int(float(self.data_column_entry[0].get()))-1
+            y_col = int(float(self.data_column_entry[1].get()))-1
+            err_col = int(float(self.data_column_entry[2].get()))-1
+            
+            # ヘッダーをグラフの軸として表示する
+            self.X_title = header[x_col]
+            self.Y_title = header[y_col]
+            
+            # データの抽出
+            self.x_data = np.array([float(row[x_col]) if len(row) > x_col and row[x_col] != '' and row[x_col] != 'nan' else np.nan for row in rows])
+            self.y_data = np.array([float(row[y_col]) if len(row) > y_col and row[y_col] != '' and row[y_col] != 'nan' else np.nan for row in rows])
+            self.y_error = np.array([float(row[err_col]) if len(row) > err_col and row[err_col] != '' and row[err_col] != 'nan' else np.nan for row in rows])
+            # y_error が 1e-10 以下の場合は 1 に置き換え
+            self.y_error = np.where(self.y_error <= 1e-10, 1, self.y_error)
+            
+            # NaNが含まれている行を削除するためのインデックス作成
+            valid_indices = ~np.isnan(self.y_data)  # y_data が NaN でない行を True にするマスク
+
+            # x_data, y_data, y_error をフィルタリング
+            self.x_data = self.x_data[valid_indices]
+            self.y_data = self.y_data[valid_indices]
+            self.y_error = self.y_error[valid_indices]
+            
+            # プロットを更新
+            self.ax.clear()
+            self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data", color='blue')
+            self.ax.legend()
+            # タイトルを設定する。
+            self.ax.set_title(f"Selected file: {self.file_name}")
+            # x 軸のラベルを設定する。
+            self.ax.set_xlabel(self.X_title)
+            # y 軸のラベルを設定する。
+            self.ax.set_ylabel(self.Y_title)
+            self.canvas.draw()
+            
+            # axis rangeを自動入力
+            self.range_entries[0].delete(0, tk.END)
+            self.range_entries[0].insert(0, f"{np.max(self.y_data):.4f}")
+            self.range_entries[1].delete(0, tk.END)
+            self.range_entries[1].insert(0, f"{np.min(self.y_data):.4f}")
+            self.range_entries[2].delete(0, tk.END)
+            self.range_entries[2].insert(0, f"{np.min(self.x_data):.4f}")
+            self.range_entries[3].delete(0, tk.END)
+            self.range_entries[3].insert(0, f"{np.max(self.x_data):.4f}")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load CSV file: {e}")
+    
+    # データビューモード
+    def load_csv_data_view(self):
         file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
         if not file_path:
             return
@@ -221,6 +304,14 @@ class FittingTool:
                     self.range_entries[2].insert(0, f"{np.min(self.x_data):.4f}")
                     self.range_entries[3].delete(0, tk.END)
                     self.range_entries[3].insert(0, f"{np.max(self.x_data):.4f}")
+                    
+                    # columnを自動入力
+                    self.data_column_entry[0].delete(0, tk.END)
+                    self.data_column_entry[0].insert(0, int(x_col+1))
+                    self.data_column_entry[1].delete(0, tk.END)
+                    self.data_column_entry[1].insert(0, int(y_col+1))
+                    self.data_column_entry[2].delete(0, tk.END)
+                    self.data_column_entry[2].insert(0, int(err_col+1)) 
 
                     # 列選択ウィンドウを閉じる
                     column_selector.destroy()
