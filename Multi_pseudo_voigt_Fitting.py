@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import csv
 from itertools import zip_longest
+import sys
+import os
 
 __version__ = '1.3.1'
 
@@ -18,6 +20,17 @@ class FittingTool:
         self.init_ui()
 
     def init_ui(self):
+        # ロゴを設定
+        # 実行時のリソースパスを設定
+        def resource_path(relative_path):
+            """PyInstallerでパスを解決する関数"""
+            if hasattr(sys, '_MEIPASS'):
+                return os.path.join(sys._MEIPASS, relative_path)
+            return os.path.join(os.path.abspath("."), relative_path)
+        # アイコンの設定
+        logo_path = resource_path("logo.ico")
+        self.root.iconbitmap(logo_path)
+        
         self.columnshift = 1+6
         self.rowshift = 13
         
@@ -930,4 +943,4 @@ if __name__ == "__main__":
     root.mainloop()
 
 # cd C:\DATA_HK\python\fitting_software
-# pyinstaller -F --noconsole  Multi_pseudo_voigt_Fitting.py
+# pyinstaller -F --noconsole --add-data "logo.ico;." --icon=logo.ico Multi_pseudo_voigt_Fitting.py
