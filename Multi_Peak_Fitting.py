@@ -14,7 +14,7 @@ __version__ = '1.4.0'
 class FittingTool:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"Multi peak Fitting    ver: {__version__}")
+        self.root.title(f"Multi Peak Fitting    ver: {__version__}")
         
         # UI要素の初期化
         self.init_ui()
@@ -1111,4 +1111,4 @@ if __name__ == "__main__":
     root.mainloop()
 
 # cd C:\DATA_HK\python\fitting_software
-# pyinstaller -F --noconsole --add-data "logo.ico;." --icon=logo.ico Multi_pseudo_voigt_Fitting.py
+# pyinstaller -F --noconsole --add-data "logo.ico;." --icon=logo.ico Multi_Peak_Fitting.py
