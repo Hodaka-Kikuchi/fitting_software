@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import csv
 
-__version__ = '1.2.0'
+__version__ = '1.3.0'
 
 class FittingTool:
     def __init__(self, root):
@@ -116,7 +116,7 @@ class FittingTool:
             self.canvas.draw()
 
         except ValueError:
-            print("エントリーボックスに正しい数値を入力してください")
+            print("Please enter a valid number in the entry box.")
 
     def setup_axis_update(self):
         """エントリーボックスの値が変更された際にグラフを更新"""
@@ -773,7 +773,7 @@ class FittingTool:
         try:
             # フィッティング結果が存在するか確認
             if not hasattr(self, 'result'):
-                raise AttributeError("フィッティング結果が存在しません。まずフィットを実行してください。")
+                raise AttributeError("Fitting results do not exist. Please perform fitting first.")
 
             result = self.result
             fit_params = result.params
@@ -829,10 +829,10 @@ class FittingTool:
                         row += [gaussian[i] for gaussian in gaussian_curves]
                     writer.writerow(row)
 
-            messagebox.showinfo("保存完了", "フィッティング結果と曲線を保存しました。")
+            messagebox.showinfo("Save Complete", "Fitting results and curves have been saved.")
 
         except Exception as e:
-            messagebox.showerror("エラー", f"保存中にエラーが発生しました: {e}")
+            messagebox.showerror("Error", f"An error occurred while saving.: {e}")
 
     def calculate_fit_curve(self, x_data, params):
         """
