@@ -9,7 +9,7 @@ from itertools import zip_longest
 import sys
 import os
 
-__version__ = '1.4.0'
+__version__ = '1.4.1'
 
 class FittingTool:
     def __init__(self, root):
@@ -1083,17 +1083,20 @@ class FittingTool:
                     # 擬フォークト関数
                     peak = [
                         ratio * amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / (Gwidth * (np.pi / (4 * np.log(2)))**(1 / 2)) +
-                        (1 - ratio) * amplitude * 2 / np.pi * Lwidth / (4 * (x - center)**2 + Lwidth**2) for x in x_data
+                        (1 - ratio) * amplitude * 2 / np.pi * Lwidth / (4 * (x - center)**2 + Lwidth**2) +
+                        bg_a + bg_b * x + bg_c * (x**2) + bg_d * (x**3) + bg_e * (x**4) for x in x_data
                     ]
                 elif Gwidth is not None:
                     # ガウシアンのみ
                     peak = [
-                        amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / (Gwidth * (np.pi / (4 * np.log(2)))**(1 / 2)) for x in x_data
+                        amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / (Gwidth * (np.pi / (4 * np.log(2)))**(1 / 2)) +
+                        bg_a + bg_b * x + bg_c * (x**2) + bg_d * (x**3) + bg_e * (x**4) for x in x_data
                     ]
                 elif Lwidth is not None:
                     # ローレンチアンのみ
                     peak = [
-                        amplitude * 2 / np.pi * Lwidth / (4 * (x - center)**2 + Lwidth**2) for x in x_data
+                        amplitude * 2 / np.pi * Lwidth / (4 * (x - center)**2 + Lwidth**2) +
+                        bg_a + bg_b * x + bg_c * (x**2) + bg_d * (x**3) + bg_e * (x**4) for x in x_data
                     ]
                 else:
                     # G_FWHMもL_FWHMも存在しない場合は空リストを追加
