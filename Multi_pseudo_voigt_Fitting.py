@@ -9,12 +9,12 @@ from itertools import zip_longest
 import sys
 import os
 
-__version__ = '1.3.1'
+__version__ = '1.4.0'
 
 class FittingTool:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"Multi Gaussian Fitting    ver: {__version__}")
+        self.root.title(f"Multi peak Fitting    ver: {__version__}")
         
         # UI要素の初期化
         self.init_ui()
@@ -94,9 +94,9 @@ class FittingTool:
         self.entries = []
         self.error_entries = []
         self.checkboxes = []
-        self.bg_params = [tk.DoubleVar(value=0) for _ in range(3)]  # バックグラウンドパラメータ
-        self.bg_labels = ["Constant", "Linear", "Quadratic"]
-        self.bg_err_labels = ["Error(Constant)", "Error(Linear)", "Error(Quadratic)"]
+        self.bg_params = [tk.DoubleVar(value=0) for _ in range(5)]  # バックグラウンドパラメータ
+        self.bg_labels = ["Constant", "Linear", "Quadratic", "Cubic", "Quartic"]
+        self.bg_err_labels = ["Error(Constant)", "Error(Linear)", "Error(Quadratic)", "Error(Cubic)", "Error(Quartic)"]
         self.create_entry_widgets()
         
         # チェックボックスの初期状態を設定
@@ -231,28 +231,28 @@ class FittingTool:
 
             # 列番号を表示
             for col_index in range(len(header)):
-                tk.Label(column_selector, text=str(col_index + 1), font=("Arial", 10, "bold"), bg="lightgray", borderwidth=1, relief="solid").grid(row=0, column=col_index, sticky="nsew", padx=2, pady=2)
+                ttk.Label(column_selector, text=str(col_index + 1), font=("Arial", 10, "bold"), bg="lightgray", borderwidth=1, relief="solid").grid(row=0, column=col_index, sticky="nsew", padx=2, pady=2)
 
             # ヘッダーを表示
             for col_index, col_name in enumerate(header):
-                tk.Label(column_selector, text=col_name, font=("Arial", 10, "bold"), borderwidth=1, relief="solid").grid(row=1, column=col_index, sticky="nsew", padx=2, pady=2)
+                ttk.Label(column_selector, text=col_name, font=("Arial", 10, "bold"), borderwidth=1, relief="solid").grid(row=1, column=col_index, sticky="nsew", padx=2, pady=2)
             
             # データプレビューを表示（最大10行）
             max_preview_rows = 10
             for row_index, row in enumerate(rows[:max_preview_rows], start=2):
                 for col_index, value in enumerate(row):
-                    tk.Label(column_selector, text=value, borderwidth=1, relief="solid").grid(row=row_index, column=col_index, sticky="nsew", padx=2, pady=2)
+                    ttk.Label(column_selector, text=value, borderwidth=1, relief="solid").grid(row=row_index, column=col_index, sticky="nsew", padx=2, pady=2)
 
             # 列選択エントリ
-            tk.Label(column_selector, text="X Column Index :").grid(row=max_preview_rows + 2, column=0, columnspan=2, pady=5, sticky="w")
+            ttk.Label(column_selector, text="X Column Index :").grid(row=max_preview_rows + 2, column=0, columnspan=2, pady=5, sticky="w")
             x_entry = tk.Entry(column_selector)
             x_entry.grid(row=max_preview_rows + 2, column=2, columnspan=2, pady=5, sticky="w")
             
-            tk.Label(column_selector, text="Y Column Index :").grid(row=max_preview_rows + 3, column=0, columnspan=2, pady=5, sticky="w")
+            ttk.Label(column_selector, text="Y Column Index :").grid(row=max_preview_rows + 3, column=0, columnspan=2, pady=5, sticky="w")
             y_entry = tk.Entry(column_selector)
             y_entry.grid(row=max_preview_rows + 3, column=2, columnspan=2, pady=5, sticky="w")
             
-            tk.Label(column_selector, text="Yerror Column Index :").grid(row=max_preview_rows + 4, column=0, columnspan=2, pady=5, sticky="w")
+            ttk.Label(column_selector, text="Yerror Column Index :").grid(row=max_preview_rows + 4, column=0, columnspan=2, pady=5, sticky="w")
             err_entry = tk.Entry(column_selector)
             err_entry.grid(row=max_preview_rows + 4, column=2, columnspan=2, pady=5, sticky="w")
 
@@ -512,7 +512,7 @@ class FittingTool:
         for i in range(10):  # 最大10個のガウシアン
             row_entries = []
             # 各ガウシアンのエントリボックス (Area, Center, FWHM)
-            for j in range(3):
+            for j in range(5):# peakの場合3つ、擬voigt関数の場合5つ
                 entry = ttk.Entry(self.root, width=10)
                 entry.grid(row=3 + i, column=self.columnshift+2+j, sticky="NSEW")
                 row_entries.append(entry)
@@ -520,41 +520,26 @@ class FittingTool:
             
         # 誤差表示用エントリボックスをリストに追加
         for i, label in enumerate(self.bg_err_labels):
-            ttk.Label(self.root, text=label).grid(row=0, column=self.columnshift+5+i, sticky="NSEW")
+            ttk.Label(self.root, text=label).grid(row=0, column=self.columnshift+7+i, sticky="NSEW")
             bg_error_entry = ttk.Entry(self.root, state="readonly", width=10)
-            bg_error_entry.grid(row=1, column=self.columnshift+5+i, sticky="NSEW")
+            bg_error_entry.grid(row=1, column=self.columnshift+7+i, sticky="NSEW")
             self.bg_errors.append(bg_error_entry)  
 
         # ガウシアンのパラメータの誤差        
         for i in range(10):  # 最大10個のガウシアン
             row_errors = []
             # 各ガウシアンの誤差表示用エントリボックス (readonly)
-            for j in range(3):
+            for j in range(5):
                 error_entry = ttk.Entry(self.root, state="readonly", width=10)
-                error_entry.grid(row=3 + i, column=self.columnshift+5+j, sticky="NSEW")
+                error_entry.grid(row=3 + i, column=self.columnshift+7+j, sticky="NSEW")
                 row_errors.append(error_entry)
             self.error_entries.append(row_errors)
             
         # パラメータのラベル
-        """
-        ttk.Label(self.root, text="G_ratio").grid(row=2, column=4)
-        ttk.Label(self.root, text="Area").grid(row=2, column=5)
-        ttk.Label(self.root, text="Center").grid(row=2, column=6)
-        ttk.Label(self.root, text="G_FWHM").grid(row=2, column=7)
-        ttk.Label(self.root, text="L_FWHM").grid(row=2, column=8)
-        ttk.Label(self.root, text="Error (G_ratio)").grid(row=2, column=9)
-        ttk.Label(self.root, text="Error (Area)").grid(row=2, column=10)
-        ttk.Label(self.root, text="Error (Center)").grid(row=2, column=11)
-        ttk.Label(self.root, text="Error (G_FWHM)").grid(row=2, column=12)
-        ttk.Label(self.root, text="Error (L_FWHM)").grid(row=2, column=13)
-        """
-        ttk.Label(self.root, text="Area").grid(row=2, column=self.columnshift+2, sticky="NSEW")
-        ttk.Label(self.root, text="Center").grid(row=2, column=self.columnshift+3, sticky="NSEW")
-        ttk.Label(self.root, text="FWHM").grid(row=2, column=self.columnshift+4, sticky="NSEW")
-        ttk.Label(self.root, text="Error (Area)").grid(row=2, column=self.columnshift+5, sticky="NSEW")
-        ttk.Label(self.root, text="Error (Center)").grid(row=2, column=self.columnshift+6, sticky="NSEW")
-        ttk.Label(self.root, text="Error (FWHM)").grid(row=2, column=self.columnshift+7, sticky="NSEW")
-    
+        self.param_lbl = ["Ratio","Area","Center","G_FWHM","L_FWHM","Error (Ratio)","Error (Area)","Error (Center)","Error (G_FWHM)","Error (L_FWHM)"]
+        for i, label in enumerate(self.param_lbl):
+            ttk.Label(self.root, text=label).grid(row=2, column=self.columnshift+2+i, sticky="NSEW")
+        
     def toggle_entry_state(self):
         """ チェックボックスの状態に応じてエントリの有効化・無効化 """
         for i in range(10):
@@ -568,47 +553,82 @@ class FittingTool:
         bg_a = params['bg_a']
         bg_b = params['bg_b']
         bg_c = params['bg_c']
-        model = bg_a + bg_b * x + bg_c * x**2
+        bg_d = params['bg_d']
+        bg_e = params['bg_e']
+        model = bg_a + bg_b * x + bg_c * x**2 + bg_d * x**3 + bg_e * x**4
 
-        # ガウシアン項
+        # ガウシアン項とローレンチアン項
         for i in range(10):
-            if self.checkboxes[i].get():
-                amp = params[f'area_{i+1}']
-                cen = params[f'center_{i+1}']
-                wid = params[f'FWHM_{i+1}']
-                model += amp * np.exp(-4 * np.log(2) * ((x - cen) / wid)**2)/ (wid * (np.pi/(4 * np.log(2)))**(1/2))
-                # amp * np.exp(-4 * np.log(2) * ((x_data - cen) / wid)**2)/ (wid * (np.pi/(4 * np.log(2)))**(1/2))
-        
-        return (y - model) / y_err  # ノイズを無視するために誤差で割る
+            if self.checkboxes[i].get():  # チェックボックスがオンの場合
+                ratio_param = params[f'ratio_{i+1}']
+                ratio = ratio_param.value  # 比率パラメータの値
+                ratio_fixed = not ratio_param.vary  # 固定されているかどうか
+                amp = params[f'area_{i+1}'].value
+                cen = params[f'center_{i+1}'].value
+
+                if ratio_fixed:  # 固定値の場合
+                    if ratio == 1:  # ガウシアンのみ
+                        Gwid = params[f'G_FWHM_{i+1}'].value
+                        model += amp * np.exp(-4 * np.log(2) * ((x - cen) / Gwid)**2) / (Gwid * (np.pi / (4 * np.log(2)))**0.5)
+                    elif ratio == 0:  # ローレンチアンのみ
+                        Lwid = params[f'L_FWHM_{i+1}'].value
+                        model += amp * 2 / np.pi * Lwid / (4 * (x - cen)**2 + Lwid**2)
+                else:  # 可変値の場合
+                    # 擬フォークト関数
+                    Gwid = params[f'G_FWHM_{i+1}'].value
+                    Lwid = params[f'L_FWHM_{i+1}'].value
+                    peak = amp * np.exp(-4 * np.log(2) * ((x - cen) / Gwid)**2) / (Gwid * (np.pi / (4 * np.log(2)))**0.5)
+                    lorentzian = amp * 2 / np.pi * Lwid / (4 * (x - cen)**2 + Lwid**2)
+                    model += ratio * peak + (1 - ratio) * lorentzian
+
+        return (y - model) / y_err  # 残差を誤差で正規化して返す
 
     def fit_data(self):
         # バックグラウンドパラメータの取得と処理
         bg_a = self.bg_entries[0].get()
         bg_b = self.bg_entries[1].get()
         bg_c = self.bg_entries[2].get()
+        bg_d = self.bg_entries[3].get()
+        bg_e = self.bg_entries[4].get()
 
         # バックグラウンドパラメータの 'c' を取り除く処理
         bg_a_value, bg_a_fixed = self.process_param(bg_a)
         bg_b_value, bg_b_fixed = self.process_param(bg_b)
         bg_c_value, bg_c_fixed = self.process_param(bg_c)
+        bg_d_value, bg_d_fixed = self.process_param(bg_d)
+        bg_e_value, bg_e_fixed = self.process_param(bg_e)
         
         # 各ピークに対するパラメータの取得とフィッティング
         peak_params = {}
         for i in range(10):  # 最大10個のピークに対して
             if self.checkboxes[i].get():  # チェックボックスがオンの場合のみ
-                area = self.entries[i][0].get()
-                center = self.entries[i][1].get()
-                fwhm = self.entries[i][2].get()
-
+                ratio = self.entries[i][0].get()
+                area = self.entries[i][1].get()
+                center = self.entries[i][2].get()
                 # 'c'がついている場合、'c'を取り除いて数値として設定
+                ratio_value, ratio_fixed = self.process_param(ratio)
                 center_value, center_fixed = self.process_param(center)
                 area_value, area_fixed = self.process_param(area)
-                FWHM_value, FWHM_fixed = self.process_param(fwhm)
-
                 # 'c'がついている場合、固定する処理を追加
+                peak_params[f'ratio_{i+1}'] = (ratio_value, ratio_fixed)
                 peak_params[f'center_{i+1}'] = (center_value, center_fixed)
                 peak_params[f'area_{i+1}'] = (area_value, area_fixed)
-                peak_params[f'FWHM_{i+1}'] = (FWHM_value, FWHM_fixed)
+                
+                if ratio_fixed == True and int(ratio_value)==1:
+                    G_fwhm = self.entries[i][3].get()
+                    G_FWHM_value, G_FWHM_fixed = self.process_param(G_fwhm)
+                    peak_params[f'G_FWHM_{i+1}'] = (G_FWHM_value, G_FWHM_fixed)
+                elif ratio_fixed == True and int(ratio_value)==0:
+                    L_fwhm = self.entries[i][4].get()
+                    L_FWHM_value, L_FWHM_fixed = self.process_param(L_fwhm)
+                    peak_params[f'L_FWHM_{i+1}'] = (L_FWHM_value, L_FWHM_fixed)
+                else:
+                    G_fwhm = self.entries[i][3].get()
+                    G_FWHM_value, G_FWHM_fixed = self.process_param(G_fwhm)
+                    peak_params[f'G_FWHM_{i+1}'] = (G_FWHM_value, G_FWHM_fixed)
+                    L_fwhm = self.entries[i][4].get()
+                    L_FWHM_value, L_FWHM_fixed = self.process_param(L_fwhm)
+                    peak_params[f'L_FWHM_{i+1}'] = (L_FWHM_value, L_FWHM_fixed)
             else:
                 continue
         
@@ -624,6 +644,8 @@ class FittingTool:
         pfit.add('bg_a', value=bg_a_value, vary=not bg_a_fixed)
         pfit.add('bg_b', value=bg_b_value, vary=not bg_b_fixed)
         pfit.add('bg_c', value=bg_c_value, vary=not bg_c_fixed)
+        pfit.add('bg_d', value=bg_d_value, vary=not bg_d_fixed)
+        pfit.add('bg_e', value=bg_e_value, vary=not bg_e_fixed)
 
         # ガウシアンのピークパラメータを追加
         for key, value in peak_params.items():
@@ -634,7 +656,7 @@ class FittingTool:
         self.result = mini.leastsq()
 
         # フィット結果をエントリーボックスに表示
-        self.display_fit_results(self.result, bg_a_fixed, bg_b_fixed, bg_c_fixed,peak_params)
+        self.display_fit_results(self.result, bg_a_fixed, bg_b_fixed, bg_c_fixed, bg_d_fixed, bg_e_fixed,peak_params)
         
         # フィット結果をグラフに表示
         self.plot_fitted_curve(x_data, self.result)
@@ -662,24 +684,47 @@ class FittingTool:
         bg_a = result.params['bg_a'].value
         bg_b = result.params['bg_b'].value
         bg_c = result.params['bg_c'].value
-        y_fit = bg_a + bg_b * fit_x_data + bg_c * fit_x_data**2
+        bg_d = result.params['bg_d'].value
+        bg_e = result.params['bg_e'].value
+        y_fit = bg_a + bg_b * fit_x_data + bg_c * fit_x_data**2 + bg_d * fit_x_data**3 + bg_e * fit_x_data**4
 
         # バックグラウンド関数を破線でプロット
         self.ax.plot(fit_x_data, y_fit, 'r--', label="Background fit", color='yellow')
 
-        # 各ピークのガウスフィット
+        # 各ピークのガウスフィットまたはローレンチアンフィット
+        # ガウスフィットやローレンチアンフィットの条件分岐
         for i in range(10):
             if f'center_{i+1}' in result.params:
+                ratio = result.params.get(f'ratio_{i+1}', None)
                 amp = result.params[f'area_{i+1}'].value
                 cen = result.params[f'center_{i+1}'].value
-                wid = result.params[f'FWHM_{i+1}'].value
+                Gwid = result.params.get(f'G_FWHM_{i+1}', None)
+                Lwid = result.params.get(f'L_FWHM_{i+1}', None)
 
-                # ガウス曲線を計算
-                peak_y = amp * np.exp(-4 * np.log(2) * ((fit_x_data - cen) / wid)**2) / (wid * (np.pi/(4 * np.log(2)))**(1/2))
-                peak_yandBG = bg_a + bg_b * fit_x_data + bg_c * fit_x_data**2 + peak_y
+                # バックグラウンドの項
+                bg_model = (bg_a + bg_b * fit_x_data + bg_c * fit_x_data**2 +
+                            bg_d * fit_x_data**3 + bg_e * fit_x_data**4)
+
+                # ピークフィット関数の計算
+                if Gwid is not None and Lwid is not None:  # 両方存在する場合は擬フォークト関数
+                    ratio = ratio.value  # ratioがNoneでなく、かつTrueの場合に値を設定
+                    peak_y = (ratio * amp * np.exp(-4 * np.log(2) * ((fit_x_data - cen) / Gwid.value)**2) / 
+                            (Gwid.value * (np.pi / (4 * np.log(2)))**0.5) +
+                            (1 - ratio) * amp * 2 / np.pi * Lwid.value / 
+                            (4 * (fit_x_data - cen)**2 + Lwid.value**2))
+                elif Gwid is not None:  # Gwidのみ存在する場合はガウシアン
+                    peak_y = amp * np.exp(-4 * np.log(2) * ((fit_x_data - cen) / Gwid.value)**2) / \
+                            (Gwid.value * (np.pi / (4 * np.log(2)))**0.5)
+                elif Lwid is not None:  # Lwidのみ存在する場合はローレンチアン
+                    peak_y = amp * 2 / np.pi * Lwid.value / (4 * (fit_x_data - cen)**2 + Lwid.value**2)
+                else:
+                    continue  # 両方とも存在しない場合はスキップ
+
+                # ピーク + バックグラウンド
+                peak_yandBG = bg_model + peak_y
 
                 # 個別のピーク関数を破線でプロット
-                self.ax.plot(fit_x_data, peak_yandBG, 'b--', label=f"Gaussian {i+1} fit", color='black')
+                self.ax.plot(fit_x_data, peak_yandBG, 'b--', label=f"Peak {i+1} fit", color='black')
 
                 # フィット曲線に加算
                 y_fit += peak_y
@@ -701,7 +746,7 @@ class FittingTool:
         
         self.canvas.draw()
 
-    def display_fit_results(self, result, bg_a_fixed, bg_b_fixed, bg_c_fixed, peak_params):
+    def display_fit_results(self, result, bg_a_fixed, bg_b_fixed, bg_c_fixed, bg_d_fixed, bg_e_fixed, peak_params):
         """ フィット結果をエントリーボックスに表示 """
         # χ^2を表示
         self.X2_entry[0].config(state="normal")  # 一時的に "normal" に変更
@@ -715,9 +760,13 @@ class FittingTool:
         self.bg_entries[0].delete(0, tk.END)
         self.bg_entries[1].delete(0, tk.END)
         self.bg_entries[2].delete(0, tk.END)
+        self.bg_entries[3].delete(0, tk.END)
+        self.bg_entries[4].delete(0, tk.END)
         self.bg_entries[0].insert(0, f"{result.params['bg_a'].value:.4f}"+ ('c' if bg_a_fixed else ''))
         self.bg_entries[1].insert(0, f"{result.params['bg_b'].value:.4f}"+ ('c' if bg_b_fixed else ''))
         self.bg_entries[2].insert(0, f"{result.params['bg_c'].value:.4f}"+ ('c' if bg_c_fixed else ''))
+        self.bg_entries[3].insert(0, f"{result.params['bg_d'].value:.4f}"+ ('c' if bg_d_fixed else ''))
+        self.bg_entries[4].insert(0, f"{result.params['bg_e'].value:.4f}"+ ('c' if bg_e_fixed else ''))
 
         # 誤差の表示（readonlyに設定）
         for entry in self.bg_errors:
@@ -725,51 +774,84 @@ class FittingTool:
         self.bg_errors[0].delete(0, tk.END)
         self.bg_errors[1].delete(0, tk.END)
         self.bg_errors[2].delete(0, tk.END)
+        self.bg_errors[3].delete(0, tk.END)
+        self.bg_errors[4].delete(0, tk.END)
         self.bg_errors[0].insert(0, f"{result.params['bg_a'].stderr:.4f}")
         self.bg_errors[1].insert(0, f"{result.params['bg_b'].stderr:.4f}")
         self.bg_errors[2].insert(0, f"{result.params['bg_c'].stderr:.4f}")
+        self.bg_errors[3].insert(0, f"{result.params['bg_d'].stderr:.4f}")
+        self.bg_errors[4].insert(0, f"{result.params['bg_e'].stderr:.4f}")
 
         # ガウシアンパラメータの結果を表示
         for i in range(10):
             if self.checkboxes[i].get():
                 # 各ピークの結果をエントリに設定
+                ratio = result.params[f'ratio_{i+1}'].value
                 amp = result.params[f'area_{i+1}'].value
                 cen = result.params[f'center_{i+1}'].value
-                wid = result.params[f'FWHM_{i+1}'].value
+                #Gwid = result.params[f'G_FWHM_{i+1}'].value
+                #Lwid = result.params[f'L_FWHM_{i+1}'].value
+                
+                ratio_param = result.params[f'ratio_{i+1}']
+                ratio_fixed = not ratio_param.vary  # 固定されているかどうか
                 
                 # cが付いている場合、末尾に 'c' を追加して表示
+                ratio_value, ratio_fixed = peak_params[f'ratio_{i+1}']
                 area_value, area_fixed = peak_params[f'area_{i+1}']
                 center_value, center_fixed = peak_params[f'center_{i+1}']
-                FWHM_value, FWHM_fixed = peak_params[f'FWHM_{i+1}']
-
                 # 'c'が付いている場合、末尾に 'c' を追加して表示
+                ratio_str = f"{ratio:.4f}" + ('c' if ratio_fixed else '')
                 area_str = f"{amp:.4f}" + ('c' if area_fixed else '')
                 center_str = f"{cen:.4f}" + ('c' if center_fixed else '')
-                FWHM_str = f"{wid:.4f}" + ('c' if FWHM_fixed else '')
-
                 # 結果をエントリに設定
                 for entry in self.entries[i]:
                     entry.config(state="normal")  # 一時的に "normal" に変更
                 self.entries[i][0].delete(0, tk.END)
                 self.entries[i][1].delete(0, tk.END)
                 self.entries[i][2].delete(0, tk.END)
-
-                self.entries[i][0].insert(0, area_str)
-                self.entries[i][1].insert(0, center_str)
-                self.entries[i][2].insert(0, FWHM_str)
-
+                self.entries[i][3].delete(0, tk.END)
+                self.entries[i][4].delete(0, tk.END)
+                self.entries[i][0].insert(0, ratio_str)
+                self.entries[i][1].insert(0, area_str)
+                self.entries[i][2].insert(0, center_str)
                 # 誤差の表示（readonlyに設定）
                 for error_entry in self.error_entries[i]:
                     error_entry.config(state="normal")  # 一時的に "normal" に変更
                 self.error_entries[i][0].delete(0, tk.END)
                 self.error_entries[i][1].delete(0, tk.END)
                 self.error_entries[i][2].delete(0, tk.END)
-
+                self.error_entries[i][3].delete(0, tk.END)
+                self.error_entries[i][4].delete(0, tk.END)
                 # 誤差をstderrから取得して表示
-                self.error_entries[i][0].insert(0, f"{result.params[f'area_{i+1}'].stderr:.4f}")
-                self.error_entries[i][1].insert(0, f"{result.params[f'center_{i+1}'].stderr:.4f}")
-                self.error_entries[i][2].insert(0, f"{result.params[f'FWHM_{i+1}'].stderr:.4f}")
+                self.error_entries[i][0].insert(0, f"{result.params[f'ratio_{i+1}'].stderr:.4f}")
+                self.error_entries[i][1].insert(0, f"{result.params[f'area_{i+1}'].stderr:.4f}")
+                self.error_entries[i][2].insert(0, f"{result.params[f'center_{i+1}'].stderr:.4f}")
                 
+                if ratio_fixed:  # 固定値の場合
+                    if ratio == 1:  # ガウシアンのみ
+                        Gwid = result.params[f'G_FWHM_{i+1}'].value
+                        G_FWHM_value, G_FWHM_fixed = peak_params[f'G_FWHM_{i+1}']
+                        G_FWHM_str = f"{Gwid:.4f}" + ('c' if G_FWHM_fixed else '')
+                        self.entries[i][3].insert(0, G_FWHM_str)
+                        self.error_entries[i][3].insert(0, f"{result.params[f'G_FWHM_{i+1}'].stderr:.4f}")
+                    elif ratio == 0:  # ローレンチアンのみ
+                        Lwid = result.params[f'L_FWHM_{i+1}'].value
+                        L_FWHM_value, L_FWHM_fixed = peak_params[f'L_FWHM_{i+1}']
+                        L_FWHM_str = f"{Lwid:.4f}" + ('c' if L_FWHM_fixed else '')
+                        self.entries[i][4].insert(0, L_FWHM_str)
+                        self.error_entries[i][4].insert(0, f"{result.params[f'L_FWHM_{i+1}'].stderr:.4f}")
+                else:  # 可変値の場合
+                    Gwid = result.params[f'G_FWHM_{i+1}'].value
+                    Lwid = result.params[f'L_FWHM_{i+1}'].value
+                    G_FWHM_value, G_FWHM_fixed = peak_params[f'G_FWHM_{i+1}']
+                    L_FWHM_value, L_FWHM_fixed = peak_params[f'L_FWHM_{i+1}']
+                    G_FWHM_str = f"{Gwid:.4f}" + ('c' if G_FWHM_fixed else '')
+                    L_FWHM_str = f"{Lwid:.4f}" + ('c' if L_FWHM_fixed else '')
+                    self.entries[i][3].insert(0, G_FWHM_str)
+                    self.entries[i][4].insert(0, L_FWHM_str)
+                    self.error_entries[i][3].insert(0, f"{result.params[f'G_FWHM_{i+1}'].stderr:.4f}")
+                    self.error_entries[i][4].insert(0, f"{result.params[f'L_FWHM_{i+1}'].stderr:.4f}")
+
                 # 最後にエントリを "readonly" に戻す（誤差のみに適用）
                 for error_entry in self.error_entries[i]:
                     error_entry.config(state="readonly")
@@ -805,8 +887,8 @@ class FittingTool:
             y_bg = self.calculate_background_curve(x_fit, fit_params)
 
             # 各ガウシアン曲線の計算
-            # gaussian_curves = self.calculate_gaussian_curves(x_fit, fit_params) # BG無
-            gaussian_curves = self.calculate_gaussian_and_BG_curves(x_fit, fit_params) # BG有
+            # peak_curves = self.calculate_peak_curves(x_fit, fit_params) # BG無
+            peak_curves = self.calculate_peak_and_BG_curves(x_fit, fit_params) # BG有
 
             # 保存ダイアログ
             filename = filedialog.asksaveasfilename(defaultextension=".csv",
@@ -827,7 +909,7 @@ class FittingTool:
 
                 # データ列の準備
                 data_headers = ['','x_data', 'y_data', 'yerr_data', 'x_fit', 'y_fit', 'y_bg']  # 空列を追加
-                data_headers += [f'gaussian_{i + 1}' for i in range(len(gaussian_curves))]
+                data_headers += [f'peak_{i + 1}' for i in range(len(peak_curves))]
 
                 # 各データ列を同じ長さにするため調整
                 max_length = max(len(x_data), len(x_fit))
@@ -837,10 +919,10 @@ class FittingTool:
                 x_fit = list(x_fit) + [""] * (max_length - len(x_fit))
                 y_fit = list(y_fit) + [""] * (max_length - len(y_fit))
                 y_bg = list(y_bg) + [""] * (max_length - len(y_bg))
-                gaussian_curves = [list(gaussian) + [""] * (max_length - len(gaussian)) for gaussian in gaussian_curves]
+                peak_curves = [list(peak) + [""] * (max_length - len(peak)) for peak in peak_curves]
 
                 # データ列を行ごとにまとめる
-                data_rows = list(zip(x_data, y_data, yerr_data, x_fit, y_fit, y_bg, *gaussian_curves))
+                data_rows = list(zip(x_data, y_data, yerr_data, x_fit, y_fit, y_bg, *peak_curves))
 
                 # ヘッダー行を作成
                 header_row = ['Parameter', 'Value', 'Error'] + data_headers
@@ -872,70 +954,156 @@ class FittingTool:
         bg_a = params['bg_a'].value
         bg_b = params['bg_b'].value
         bg_c = params['bg_c'].value
-        return [bg_a + bg_b * x + bg_c * (x**2) for x in x_data]
+        bg_d = params['bg_d'].value
+        bg_e = params['bg_e'].value
+        return [bg_a + bg_b * x + bg_c * (x**2) + bg_d * (x**3) + bg_e * (x**4) for x in x_data]
 
     def model(self, params, x):
         """
-        モデル関数：バックグラウンド + ガウシアンの合計を計算する。
+        モデル関数：バックグラウンド + ガウシアン/ローレンチアン/擬フォークトの合計を計算する。
         """
         # バックグラウンド部分
         bg_a = params['bg_a'].value
         bg_b = params['bg_b'].value
         bg_c = params['bg_c'].value
-        background = bg_a + bg_b * x + bg_c * (x**2)
+        bg_d = params['bg_d'].value
+        bg_e = params['bg_e'].value
+        background = bg_a + bg_b * x + bg_c * (x**2) + bg_d * (x**3) + bg_e * (x**4)
 
-        # ガウシアン部分
-        gaussian_sum = 0
-        for i in range(1, 11):  # 最大10個のガウシアン
+        # ピークの合計
+        peak_sum = 0
+        for i in range(1, 11):  # 最大10個のピーク
+            ratio_key = f'ratio_{i}'
             area_key = f'area_{i}'
             center_key = f'center_{i}'
-            FWHM_key = f'FWHM_{i}'
-            if area_key in params and center_key in params and FWHM_key in params:
+            G_FWHM_key = f'G_FWHM_{i}'
+            L_FWHM_key = f'L_FWHM_{i}'
+
+            # ピークパラメータが存在する場合のみ処理
+            if area_key in params and center_key in params:
                 amplitude = params[area_key].value
                 center = params[center_key].value
-                width = params[FWHM_key].value
-                gaussian = amplitude * np.exp(-4 * np.log(2) * ((x - center) / width)**2)/ (width * (np.pi/(4 * np.log(2)))**(1/2))
-                gaussian_sum += gaussian
+                ratio = params[ratio_key].value if ratio_key in params else 0.5  # デフォルト0.5
+                Gwidth = params[G_FWHM_key].value if G_FWHM_key in params else None
+                Lwidth = params[L_FWHM_key].value if L_FWHM_key in params else None
 
-        return background + gaussian_sum
+                # 条件分岐による関数選択
+                if Gwidth is not None and Lwidth is not None:  # 擬フォークト関数
+                    peak = (ratio * amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / 
+                            (Gwidth * (np.pi / (4 * np.log(2)))**0.5) +
+                            (1 - ratio) * amplitude * 2 / np.pi * Lwidth / 
+                            (4 * (x - center)**2 + Lwidth**2))
+                elif Gwidth is not None:  # ガウシアン関数
+                    peak = amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / \
+                        (Gwidth * (np.pi / (4 * np.log(2)))**0.5)
+                elif Lwidth is not None:  # ローレンチアン関数
+                    peak = amplitude * 2 / np.pi * Lwidth / (4 * (x - center)**2 + Lwidth**2)
+                else:
+                    continue  # パラメータ不足の場合はスキップ
 
-    def calculate_gaussian_curves(self, x_data, params):
+                # ピークを合計に加算
+                peak_sum += peak
+
+        return background + peak_sum
+
+    def calculate_peak_curves(self, x_data, params):
         """
-        各ガウシアン曲線を計算する。
+        各ピーク（ガウシアン、ローレンチアン、擬フォークト）曲線を計算する。
         """
-        gaussians = []
-        for i in range(1, 11):  # 最大10個のガウシアンを想定
+        curves = []
+        for i in range(1, 11):  # 最大10個のピークを想定
+            ratio_key = f'ratio_{i}'
             area_key = f'area_{i}'
             center_key = f'center_{i}'
-            FWHM_key = f'FWHM_{i}'
-            if area_key in params and center_key in params and FWHM_key in params:
+            G_FWHM_key = f'G_FWHM_{i}'
+            L_FWHM_key = f'L_FWHM_{i}'
+
+            if area_key in params and center_key in params:
                 amplitude = params[area_key].value
                 center = params[center_key].value
-                width = params[FWHM_key].value
-                gaussian = [
-                    amplitude * np.exp(-4 * np.log(2) * ((x - center) / width)**2)/ (width * (np.pi/(4 * np.log(2)))**(1/2)) for x in x_data
-                ]
-                gaussians.append(gaussian)
-        return gaussians
-    
-    def calculate_gaussian_and_BG_curves(self, x_data, params):
+                ratio = params[ratio_key].value if ratio_key in params else 0.5  # デフォルト値 0.5
+                Gwidth = params[G_FWHM_key].value if G_FWHM_key in params else None
+                Lwidth = params[L_FWHM_key].value if L_FWHM_key in params else None
+
+                # 条件分岐で関数選択
+                if Gwidth is not None and Lwidth is not None:  # 擬フォークト関数
+                    curve = [
+                        ratio * amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / 
+                        (Gwidth * (np.pi / (4 * np.log(2)))**0.5) + 
+                        (1 - ratio) * amplitude * 2 / np.pi * Lwidth / 
+                        (4 * (x - center)**2 + Lwidth**2)
+                        for x in x_data
+                    ]
+                elif Gwidth is not None:  # ガウシアン関数
+                    curve = [
+                        amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / 
+                        (Gwidth * (np.pi / (4 * np.log(2)))**0.5)
+                        for x in x_data
+                    ]
+                elif Lwidth is not None:  # ローレンチアン関数
+                    curve = [
+                        amplitude * 2 / np.pi * Lwidth / (4 * (x - center)**2 + Lwidth**2)
+                        for x in x_data
+                    ]
+                else:
+                    continue  # パラメータ不足の場合はスキップ
+
+                # 計算した曲線をリストに追加
+                curves.append(curve)
+
+        return curves
+
+    def calculate_peak_and_BG_curves(self, x_data, params):
         bg_a = params['bg_a'].value
         bg_b = params['bg_b'].value
         bg_c = params['bg_c'].value
-        gaussians = []
+        bg_d = params['bg_d'].value
+        bg_e = params['bg_e'].value
+        peaks = []
+
         for i in range(1, 11):  # 最大10個のガウシアンを想定
+            ratio_key = f'ratio_{i}'
             area_key = f'area_{i}'
             center_key = f'center_{i}'
-            FWHM_key = f'FWHM_{i}'
-            if area_key in params and center_key in params and FWHM_key in params:
+            G_FWHM_key = f'G_FWHM_{i}'
+            L_FWHM_key = f'L_FWHM_{i}'
+
+            # 必要なパラメータがparamsに存在するか確認
+            if ratio_key in params and area_key in params and center_key in params:
+                ratio = params[ratio_key].value
                 amplitude = params[area_key].value
                 center = params[center_key].value
-                width = params[FWHM_key].value
-                gaussian = [
-                    amplitude * np.exp(-4 * np.log(2) * ((x - center) / width)**2)/ (width * (np.pi/(4 * np.log(2)))**(1/2)) + bg_a + bg_b * x + bg_c * (x**2) for x in x_data
-                ]
-                gaussians.append(gaussian)
-        return gaussians
+
+                # G_FWHMとL_FWHMが存在する場合のみ、それぞれの値を取得
+                Gwidth = params[G_FWHM_key].value if G_FWHM_key in params else None
+                Lwidth = params[L_FWHM_key].value if L_FWHM_key in params else None
+
+                # ガウシアン部分の計算
+                if Gwidth is not None and Lwidth is not None:
+                    # 擬フォークト関数
+                    peak = [
+                        ratio * amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / (Gwidth * (np.pi / (4 * np.log(2)))**(1 / 2)) +
+                        (1 - ratio) * amplitude * 2 / np.pi * Lwidth / (4 * (x - center)**2 + Lwidth**2) for x in x_data
+                    ]
+                elif Gwidth is not None:
+                    # ガウシアンのみ
+                    peak = [
+                        amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / (Gwidth * (np.pi / (4 * np.log(2)))**(1 / 2)) for x in x_data
+                    ]
+                elif Lwidth is not None:
+                    # ローレンチアンのみ
+                    peak = [
+                        amplitude * 2 / np.pi * Lwidth / (4 * (x - center)**2 + Lwidth**2) for x in x_data
+                    ]
+                else:
+                    # G_FWHMもL_FWHMも存在しない場合は空リストを追加
+                    peak = []
+
+                # ガウシアンをリストに追加
+                peaks.append(peak)
+
+        return peaks
+
     
 if __name__ == "__main__":
     root = tk.Tk()
