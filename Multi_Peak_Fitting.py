@@ -161,14 +161,14 @@ class FittingTool:
 
             # 既存の参照線を削除
             for line in self.ax.get_lines():
-                if line.get_linestyle() == '--' and line.get_color() == 'black':  # 条件で参照線を識別
+                if line.get_linestyle() == '--' and line.get_color() == 'green':  # 条件で参照線を識別
                     line.remove()
 
             # 新しい参照線を追加
             if fit_range1 is not None:
-                self.ax.axvline(x=fit_range1, color='black', linestyle='--')
+                self.ax.axvline(x=fit_range1, color='green', linestyle='--')
             if fit_range2 is not None:
-                self.ax.axvline(x=fit_range2, color='black', linestyle='--')
+                self.ax.axvline(x=fit_range2, color='green', linestyle='--')
 
             # グラフを更新
             self.canvas.draw()
@@ -230,8 +230,8 @@ class FittingTool:
             self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data", color='blue')
             self.ax.legend()
             # 参照線を設定する。
-            self.ax.axvline(x=np.min(self.x_data), color='black', linestyle='--')
-            self.ax.axvline(x=np.max(self.x_data), color='black', linestyle='--')
+            self.ax.axvline(x=np.min(self.x_data), color='green', linestyle='--')
+            self.ax.axvline(x=np.max(self.x_data), color='green', linestyle='--')
             # タイトルを設定する。
             self.ax.set_title(f"Selected file: {self.file_name}")
             # x 軸のラベルを設定する。
@@ -355,8 +355,8 @@ class FittingTool:
                     self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data", color='blue')
                     self.ax.legend()
                     # 参照線を設定する。
-                    self.ax.axvline(x=np.min(self.x_data), color='black', linestyle='--')
-                    self.ax.axvline(x=np.max(self.x_data), color='black', linestyle='--')
+                    self.ax.axvline(x=np.min(self.x_data), color='green', linestyle='--')
+                    self.ax.axvline(x=np.max(self.x_data), color='green', linestyle='--')
                     # タイトルを設定する。
                     self.ax.set_title(f"Selected file: {self.file_name}")
                     # x 軸のラベルを設定する。
@@ -730,7 +730,8 @@ class FittingTool:
         
         # フィッティング失敗を確認
         if self.result.params['bg_a'].stderr is None:
-            self.show_error_message("Fitting failed. Please check your data and initial parameters.")
+            #self.show_error_message("Fitting failed. Please check your data and initial parameters.")
+            messagebox.showinfo("Error", "Fitting failed. Please check your data and initial parameters.")
             return  # フィット結果を表示せず終了
         else:
             # フィット結果をエントリーボックスに表示
@@ -800,6 +801,7 @@ class FittingTool:
 
                 # ピーク + バックグラウンド
                 peak_yandBG = bg_model + peak_y
+                print(peak_yandBG)
 
                 # 個別のピーク関数を破線でプロット
                 self.ax.plot(fit_x_data, peak_yandBG, 'b--', label=f"Peak {i+1} fit", color='black')
@@ -817,14 +819,14 @@ class FittingTool:
 
         # 既存の参照線を削除
         for line in self.ax.get_lines():
-            if line.get_linestyle() == '--' and line.get_color() == 'black':  # 条件で参照線を識別
+            if line.get_linestyle() == '--' and line.get_color() == 'green':  # 条件で参照線を識別
                 line.remove()
 
         # 新しい参照線を追加
         if fit_range1 is not None:
-            self.ax.axvline(x=fit_range1, color='black', linestyle='--')
+            self.ax.axvline(x=fit_range1, color='green', linestyle='--')
         if fit_range2 is not None:
-            self.ax.axvline(x=fit_range2, color='black', linestyle='--')
+            self.ax.axvline(x=fit_range2, color='green', linestyle='--')
         
         # 軸範囲を再設定
         self.ax.set_xlim(x_min, x_max)
