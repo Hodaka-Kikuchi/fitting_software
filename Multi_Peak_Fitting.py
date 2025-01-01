@@ -62,7 +62,19 @@ class FittingTool:
         ttk.Label(self.root, text="Xmax").grid(row=self.rowshift, column=self.columnshift-2, sticky="NSEW")
         range_entry = ttk.Entry(self.root, state="normal", width=10)
         range_entry.grid(row=self.rowshift, column=self.columnshift-1, sticky="NSEW")
-        self.range_entries.append(range_entry) 
+        self.range_entries.append(range_entry)
+        
+        # fitting範囲の指定
+        self.fit_range_entries = []
+        ttk.Label(self.root, text="fitting range : ").grid(row=self.rowshift+1, column=self.columnshift+2, sticky="NSEW")
+        ttk.Label(self.root, text="from").grid(row=self.rowshift+1, column=self.columnshift+3, sticky="NSEW")
+        fit_range_entries = ttk.Entry(self.root, state="normal", width=10)
+        fit_range_entries.grid(row=self.rowshift+1, column=self.columnshift+4, sticky="NSEW")
+        self.fit_range_entries.append(fit_range_entries)
+        ttk.Label(self.root, text="to").grid(row=self.rowshift+1, column=self.columnshift+5, sticky="NSEW")
+        fit_range_entries = ttk.Entry(self.root, state="normal", width=10)
+        fit_range_entries.grid(row=self.rowshift+1, column=self.columnshift+6, sticky="NSEW")
+        self.fit_range_entries.append(fit_range_entries)
         
         # ファイル選択ボタン
         self.file_button = ttk.Button(self.root, text="Load CSV (data view)", command=self.load_csv_data_view)
@@ -104,13 +116,15 @@ class FittingTool:
         
         # キャンバスのグラフ表示領域
         self.setup_axis_update()
+        # 参照線の自動更新
+        self.setup_vline()
         
         # グリッドの設定（列と行の重みを均等にする）
         for i in range(13):  # 0-13列までの設定
             self.root.columnconfigure(i, weight=1)
         for i in range(15):  # 0-15行までの設定
             self.root.rowconfigure(i, weight=1)
-
+        
     def update_axis_range(self):
         """エントリーボックスの値に基づいてグラフの表示範囲を更新"""
         try:
@@ -137,6 +151,36 @@ class FittingTool:
         for entry in self.range_entries:
             entry.bind("<FocusOut>", lambda event: self.update_axis_range())
             entry.bind("<Return>", lambda event: self.update_axis_range())
+    
+    def update_vline(self):
+        """エントリーボックスの値に基づいてグラフの参照線を更新"""
+        try:
+            # エントリーボックスから値を取得
+            fit_range1 = float(self.fit_range_entries[0].get()) if self.fit_range_entries[0].get() else None
+            fit_range2 = float(self.fit_range_entries[1].get()) if self.fit_range_entries[1].get() else None
+
+            # 既存の参照線を削除
+            for line in self.ax.get_lines():
+                if line.get_linestyle() == '--' and line.get_color() == 'black':  # 条件で参照線を識別
+                    line.remove()
+
+            # 新しい参照線を追加
+            if fit_range1 is not None:
+                self.ax.axvline(x=fit_range1, color='black', linestyle='--')
+            if fit_range2 is not None:
+                self.ax.axvline(x=fit_range2, color='black', linestyle='--')
+
+            # グラフを更新
+            self.canvas.draw()
+
+        except ValueError:
+            print("Please enter a valid number in the entry box.")
+
+    def setup_vline(self):
+        """エントリーボックスの値が変更された際にグラフを更新"""
+        for entry in self.fit_range_entries:
+            entry.bind("<FocusOut>", lambda event: self.update_vline())  # 修正済み
+            entry.bind("<Return>", lambda event: self.update_vline())  # 修正済み
     
     # エントリーボックスの数値のcolumnをデータビュー無で読み込み
     def load_csv(self):
@@ -185,6 +229,9 @@ class FittingTool:
             self.ax.clear()
             self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data", color='blue')
             self.ax.legend()
+            # 参照線を設定する。
+            self.ax.axvline(x=np.min(self.x_data), color='black', linestyle='--')
+            self.ax.axvline(x=np.max(self.x_data), color='black', linestyle='--')
             # タイトルを設定する。
             self.ax.set_title(f"Selected file: {self.file_name}")
             # x 軸のラベルを設定する。
@@ -202,6 +249,12 @@ class FittingTool:
             self.range_entries[2].insert(0, f"{np.min(self.x_data):.4f}")
             self.range_entries[3].delete(0, tk.END)
             self.range_entries[3].insert(0, f"{np.max(self.x_data):.4f}")
+            
+            # fitting領域を自動入力。初期値は全範囲
+            self.fit_range_entries[0].delete(0, tk.END)
+            self.fit_range_entries[0].insert(0, f"{np.min(self.x_data):.4f}")
+            self.fit_range_entries[1].delete(0, tk.END)
+            self.fit_range_entries[1].insert(0, f"{np.max(self.x_data):.4f}")
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load CSV file: {e}")
@@ -301,6 +354,9 @@ class FittingTool:
                     self.ax.clear()
                     self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data", color='blue')
                     self.ax.legend()
+                    # 参照線を設定する。
+                    self.ax.axvline(x=np.min(self.x_data), color='black', linestyle='--')
+                    self.ax.axvline(x=np.max(self.x_data), color='black', linestyle='--')
                     # タイトルを設定する。
                     self.ax.set_title(f"Selected file: {self.file_name}")
                     # x 軸のラベルを設定する。
@@ -318,6 +374,12 @@ class FittingTool:
                     self.range_entries[2].insert(0, f"{np.min(self.x_data):.4f}")
                     self.range_entries[3].delete(0, tk.END)
                     self.range_entries[3].insert(0, f"{np.max(self.x_data):.4f}")
+                    
+                    # fitting領域を自動入力。初期値は全範囲
+                    self.fit_range_entries[0].delete(0, tk.END)
+                    self.fit_range_entries[0].insert(0, f"{np.min(self.x_data):.4f}")
+                    self.fit_range_entries[1].delete(0, tk.END)
+                    self.fit_range_entries[1].insert(0, f"{np.max(self.x_data):.4f}")
                     
                     # columnを自動入力
                     self.data_column_entry[0].delete(0, tk.END)
@@ -632,10 +694,21 @@ class FittingTool:
             else:
                 continue
         
-        # フィットするデータ
-        x_data = self.x_data
-        y_data = self.y_data
-        y_error = self.y_error
+        # フィット範囲を取得
+        fit_range1 = float(self.fit_range_entries[0].get()) if self.fit_range_entries[0].get() else None
+        fit_range2 = float(self.fit_range_entries[1].get()) if self.fit_range_entries[1].get() else None
+
+        # フィルタリングされたデータを作成
+        if fit_range1 is not None and fit_range2 is not None:
+            mask = (self.x_data >= fit_range1) & (self.x_data <= fit_range2)
+            x_data = self.x_data[mask]
+            y_data = self.y_data[mask]
+            y_error = self.y_error[mask]
+        else:
+            # 範囲が指定されていない場合は全データを使用
+            x_data = self.x_data
+            y_data = self.y_data
+            y_error = self.y_error
         
         # lmfitの最小化処理
         pfit = Parameters()
@@ -654,12 +727,17 @@ class FittingTool:
         # 最小化処理
         mini = Minimizer(self.residual, pfit, fcn_args=(x_data, y_data, y_error))
         self.result = mini.leastsq()
-
-        # フィット結果をエントリーボックスに表示
-        self.display_fit_results(self.result, bg_a_fixed, bg_b_fixed, bg_c_fixed, bg_d_fixed, bg_e_fixed,peak_params)
         
-        # フィット結果をグラフに表示
-        self.plot_fitted_curve(x_data, self.result)
+        # フィッティング失敗を確認
+        if self.result.params['bg_a'].stderr is None:
+            self.show_error_message("Fitting failed. Please check your data and initial parameters.")
+            return  # フィット結果を表示せず終了
+        else:
+            # フィット結果をエントリーボックスに表示
+            self.display_fit_results(self.result, bg_a_fixed, bg_b_fixed, bg_c_fixed, bg_d_fixed, bg_e_fixed,peak_params)
+            
+            # フィット結果をグラフに表示
+            self.plot_fitted_curve(x_data, self.result)
 
     def process_param(self, param):
         """パラメータの 'c' を処理する関数"""
@@ -730,9 +808,23 @@ class FittingTool:
                 y_fit += peak_y
 
         # グラフを更新
-        self.ax.errorbar(x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data", color='blue')
+        self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data", color='blue')
         self.ax.plot(fit_x_data, y_fit, label="Fitted curve", color='red')
         self.ax.legend()
+        # 参照線
+        fit_range1 = float(self.fit_range_entries[0].get()) if self.fit_range_entries[0].get() else None
+        fit_range2 = float(self.fit_range_entries[1].get()) if self.fit_range_entries[1].get() else None
+
+        # 既存の参照線を削除
+        for line in self.ax.get_lines():
+            if line.get_linestyle() == '--' and line.get_color() == 'black':  # 条件で参照線を識別
+                line.remove()
+
+        # 新しい参照線を追加
+        if fit_range1 is not None:
+            self.ax.axvline(x=fit_range1, color='black', linestyle='--')
+        if fit_range2 is not None:
+            self.ax.axvline(x=fit_range2, color='black', linestyle='--')
         
         # 軸範囲を再設定
         self.ax.set_xlim(x_min, x_max)
