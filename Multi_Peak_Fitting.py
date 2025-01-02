@@ -287,28 +287,28 @@ class FittingTool:
 
             # 列番号を表示
             for col_index in range(len(header)):
-                ttk.Label(column_selector, text=str(col_index + 1), font=("Arial", 10, "bold"), borderwidth=1, relief="solid").grid(row=0, column=col_index, sticky="nsew", padx=2, pady=2)
-                #ttk.Label(column_selector, text=str(col_index + 1), font=("Arial", 10, "bold"), bg="lightgray", borderwidth=1, relief="solid").grid(row=0, column=col_index, sticky="nsew", padx=2, pady=2)
+                tk.Label(column_selector, text=str(col_index + 1), font=("Arial", 10, "bold"), bg="lightgray", borderwidth=1, relief="solid").grid(row=0, column=col_index, sticky="nsew", padx=2, pady=2)
+
             # ヘッダーを表示
             for col_index, col_name in enumerate(header):
-                ttk.Label(column_selector, text=col_name, font=("Arial", 10, "bold"), borderwidth=1, relief="solid").grid(row=1, column=col_index, sticky="nsew", padx=2, pady=2)
+                tk.Label(column_selector, text=col_name, font=("Arial", 10, "bold"), borderwidth=1, relief="solid").grid(row=1, column=col_index, sticky="nsew", padx=2, pady=2)
             
             # データプレビューを表示（最大10行）
             max_preview_rows = 10
             for row_index, row in enumerate(rows[:max_preview_rows], start=2):
                 for col_index, value in enumerate(row):
-                    ttk.Label(column_selector, text=value, borderwidth=1, relief="solid").grid(row=row_index, column=col_index, sticky="nsew", padx=2, pady=2)
+                    tk.Label(column_selector, text=value, borderwidth=1, relief="solid").grid(row=row_index, column=col_index, sticky="nsew", padx=2, pady=2)
 
             # 列選択エントリ
-            ttk.Label(column_selector, text="X Column Index :").grid(row=max_preview_rows + 2, column=0, columnspan=2, pady=5, sticky="w")
+            tk.Label(column_selector, text="X Column Index :").grid(row=max_preview_rows + 2, column=0, columnspan=2, pady=5, sticky="w")
             x_entry = tk.Entry(column_selector)
             x_entry.grid(row=max_preview_rows + 2, column=2, columnspan=2, pady=5, sticky="w")
             
-            ttk.Label(column_selector, text="Y Column Index :").grid(row=max_preview_rows + 3, column=0, columnspan=2, pady=5, sticky="w")
+            tk.Label(column_selector, text="Y Column Index :").grid(row=max_preview_rows + 3, column=0, columnspan=2, pady=5, sticky="w")
             y_entry = tk.Entry(column_selector)
             y_entry.grid(row=max_preview_rows + 3, column=2, columnspan=2, pady=5, sticky="w")
             
-            ttk.Label(column_selector, text="Yerror Column Index :").grid(row=max_preview_rows + 4, column=0, columnspan=2, pady=5, sticky="w")
+            tk.Label(column_selector, text="Yerror Column Index :").grid(row=max_preview_rows + 4, column=0, columnspan=2, pady=5, sticky="w")
             err_entry = tk.Entry(column_selector)
             err_entry.grid(row=max_preview_rows + 4, column=2, columnspan=2, pady=5, sticky="w")
 
@@ -357,9 +357,6 @@ class FittingTool:
                     self.ax.clear()
                     self.ax.errorbar(self.x_data, self.y_data, yerr=self.y_error, fmt='o', label="Data", color='blue')
                     self.ax.legend()
-                    # 参照線を設定する。
-                    self.ax.axvline(x=np.min(self.x_data), color='green', linestyle='--')
-                    self.ax.axvline(x=np.max(self.x_data), color='green', linestyle='--')
                     # タイトルを設定する。
                     self.ax.set_title(f"Selected file: {self.file_name}")
                     # x 軸のラベルを設定する。
@@ -377,12 +374,6 @@ class FittingTool:
                     self.range_entries[2].insert(0, f"{np.min(self.x_data):.4f}")
                     self.range_entries[3].delete(0, tk.END)
                     self.range_entries[3].insert(0, f"{np.max(self.x_data):.4f}")
-                    
-                    # fitting領域を自動入力。初期値は全範囲
-                    self.fit_range_entries[0].delete(0, tk.END)
-                    self.fit_range_entries[0].insert(0, f"{np.min(self.x_data):.4f}")
-                    self.fit_range_entries[1].delete(0, tk.END)
-                    self.fit_range_entries[1].insert(0, f"{np.max(self.x_data):.4f}")
                     
                     # columnを自動入力
                     self.data_column_entry[0].delete(0, tk.END)
