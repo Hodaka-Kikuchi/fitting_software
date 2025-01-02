@@ -8,6 +8,7 @@ import csv
 from itertools import zip_longest
 import sys
 import os
+import re
 
 __version__ = '1.4.2'
 
@@ -819,7 +820,7 @@ class FittingTool:
 
                 # ピーク + バックグラウンド
                 peak_yandBG = bg_model + peak_y
-                print(peak_yandBG)
+                #print(peak_yandBG)
 
                 # 個別のピーク関数を破線でプロット
                 self.ax.plot(fit_x_data, peak_yandBG, 'b--', label=f"Peak {i+1} fit", color='black')
@@ -1018,10 +1019,23 @@ class FittingTool:
                 #param_rows.append(['Parameter', 'Value', 'Error'])
                 for param_name, param in fit_params.items():
                     param_rows.append([param_name, param.value, param.stderr])
+                    
+                # パラメータ名リストを用意（例として fit_params のキーを使用）
+                param_names = fit_params.keys()
+                
+                # ピーク番号を抽出（"peak_" または数字を含む名前を対象）
+                peak_numbers = sorted(
+                    set(
+                        int(match.group(1))
+                        for name in param_names
+                        if (match := re.search(r'_(\d+)', name))
+                    )
+                )
 
                 # データ列の準備
                 data_headers = ['','x_data', 'y_data', 'yerr_data', 'x_fit', 'y_fit', 'y_bg']  # 空列を追加
-                data_headers += [f'peak_{i + 1}' for i in range(len(peak_curves))]
+                #data_headers += [f'peak_{i + 1}' for i in range(len(peak_curves))]
+                data_headers += [f'peak_{num}' for num in peak_numbers] #番号をチェックボックス番号とそろえる。
 
                 # 各データ列を同じ長さにするため調整
                 max_length = max(len(x_data), len(x_fit))
