@@ -34,6 +34,8 @@ class FittingTool:
         
         self.columnshift = 1+6
         self.rowshift = 10+3 # self.rowshiftを増やす場合はself.num_peak+3の数値に書き換えること。ここでself.num_peakを定義することはできない
+        # peakの個数を指定
+        self.num_peak = 10
         
         # グラフ表示用キャンバス
         self.figure, self.ax = plt.subplots()
@@ -97,11 +99,11 @@ class FittingTool:
 
         # フィットボタン
         self.fit_button = ttk.Button(self.root, text="Fit", command=self.fit_data)
-        self.fit_button.grid(row=0, column=3, sticky="NSEW")
+        self.fit_button.grid(row=2, column=self.columnshift+1, sticky="NSEW")
 
         # 保存ボタン
         self.save_button = ttk.Button(self.root, text="Save CSV", command=self.save_fitting_results)
-        self.save_button.grid(row=0, column=4, sticky="NSEW")
+        self.save_button.grid(row=0, column=self.columnshift-1, sticky="NSEW")
 
         # エントリーボックス作成 (フィッティング用のエントリ)
         self.entries = []
@@ -548,9 +550,6 @@ class FittingTool:
         self.bg_entries = []  # バックグラウンドのエントリボックス
         self.bg_errors = []   # バックグラウンドの誤差表示用エントリボックス
         
-        # peakの個数を指定
-        self.num_peak =10
-        
         # チェックボックスの作成
         for i in range(self.num_peak):  # 最大self.num_peak個のガウシアン
             # チェックボックス (初期状態でオフ)
@@ -568,10 +567,11 @@ class FittingTool:
         
         # エントリボックスをリストに追加
         for i, label in enumerate(self.bg_labels):
+            bg_entry = []
             ttk.Label(self.root, text=label).grid(row=0, column=self.columnshift+2+i, sticky="NSEW")
             bg_entry = ttk.Entry(self.root, width=10)
             bg_entry.grid(row=1, column=self.columnshift+2+i, sticky="NSEW")
-            if i>2:
+            if i>1:
                 bg_entry.insert(0,'0c')
             else:
                 bg_entry.insert(0,0)
@@ -581,7 +581,7 @@ class FittingTool:
         for i in range(self.num_peak):  # 最大self.num_peak個のピーク
             row_entries = []
             # 各ガウシアンのエントリボックス (Area, Center, FWHM)
-            for j in range(5):# peakの場合3つ、擬voigt関数の場合5つ
+            for j in range(5):# 擬voigt関数の場合5つ
                 entry = ttk.Entry(self.root, width=10)
                 entry.grid(row=3 + i, column=self.columnshift+2+j, sticky="NSEW")
                 row_entries.append(entry)
@@ -608,7 +608,20 @@ class FittingTool:
         self.param_lbl = ["Ratio","Area","Center","G_FWHM","L_FWHM","Error (Ratio)","Error (Area)","Error (Center)","Error (G_FWHM)","Error (L_FWHM)"]
         for i, label in enumerate(self.param_lbl):
             ttk.Label(self.root, text=label).grid(row=2, column=self.columnshift+2+i, sticky="NSEW")
+            
+        self.clear_button = ttk.Button(self.root, text="clear parameter", command=self.clear_param)
+        self.clear_button.grid(row=2+self.num_peak+1, column=self.columnshift+1+1, columnspan = 5, sticky="NSEW")
         
+    # clear ボタン
+    def clear_param(self):
+        # ピーク関数のパラメータ
+        """すべてのエントリーボックスをクリアする"""
+        for bg_entry in self.bg_entries:
+            bg_entry.delete(0, tk.END) # 各エントリーボックスをクリア
+        for row_entries in self.entries:
+            for entry in row_entries:
+                entry.delete(0, tk.END) # 各エントリーボックスをクリア
+
     def toggle_entry_state(self):
         """ チェックボックスの状態に応じてエントリの有効化・無効化 """
         for i in range(self.num_peak):
@@ -646,9 +659,9 @@ class FittingTool:
                     # 擬フォークト関数
                     Gwid = params[f'G_FWHM_{i+1}'].value
                     Lwid = params[f'L_FWHM_{i+1}'].value
-                    peak = amp * np.exp(-4 * np.log(2) * ((x - cen) / Gwid)**2) / (Gwid * (np.pi / (4 * np.log(2)))**0.5)
+                    Gaussian = amp * np.exp(-4 * np.log(2) * ((x - cen) / Gwid)**2) / (Gwid * (np.pi / (4 * np.log(2)))**0.5)
                     lorentzian = amp * 2 / np.pi * Lwid / (4 * (x - cen)**2 + Lwid**2)
-                    model += ratio * peak + (1 - ratio) * lorentzian
+                    model += ratio * Gaussian + (1 - ratio) * lorentzian
 
         return (y - model) / y_err  # 残差を誤差で正規化して返す
 
