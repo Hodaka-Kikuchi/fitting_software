@@ -287,8 +287,8 @@ class FittingTool:
 
             # 列番号を表示
             for col_index in range(len(header)):
-                ttk.Label(column_selector, text=str(col_index + 1), font=("Arial", 10, "bold"), bg="lightgray", borderwidth=1, relief="solid").grid(row=0, column=col_index, sticky="nsew", padx=2, pady=2)
-
+                ttk.Label(column_selector, text=str(col_index + 1), font=("Arial", 10, "bold"), borderwidth=1, relief="solid").grid(row=0, column=col_index, sticky="nsew", padx=2, pady=2)
+                #ttk.Label(column_selector, text=str(col_index + 1), font=("Arial", 10, "bold"), bg="lightgray", borderwidth=1, relief="solid").grid(row=0, column=col_index, sticky="nsew", padx=2, pady=2)
             # ヘッダーを表示
             for col_index, col_name in enumerate(header):
                 ttk.Label(column_selector, text=col_name, font=("Arial", 10, "bold"), borderwidth=1, relief="solid").grid(row=1, column=col_index, sticky="nsew", padx=2, pady=2)
