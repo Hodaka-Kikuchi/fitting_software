@@ -9,7 +9,7 @@ from itertools import zip_longest
 import sys
 import os
 
-__version__ = '1.4.1'
+__version__ = '1.4.2'
 
 class FittingTool:
     def __init__(self, root):
@@ -32,7 +32,7 @@ class FittingTool:
         self.root.iconbitmap(logo_path)
         
         self.columnshift = 1+6
-        self.rowshift = 13
+        self.rowshift = 10+3 # self.rowshiftを増やす場合はself.num_peak+3の数値に書き換えること。ここでself.num_peakを定義することはできない
         
         # グラフ表示用キャンバス
         self.figure, self.ax = plt.subplots()
@@ -547,8 +547,11 @@ class FittingTool:
         self.bg_entries = []  # バックグラウンドのエントリボックス
         self.bg_errors = []   # バックグラウンドの誤差表示用エントリボックス
         
+        # peakの個数を指定
+        self.num_peak =10
+        
         # チェックボックスの作成
-        for i in range(10):  # 最大10個のガウシアン
+        for i in range(self.num_peak):  # 最大self.num_peak個のガウシアン
             # チェックボックス (初期状態でオフ)
             check_var = tk.BooleanVar(value=False)
             checkbox = ttk.Checkbutton(self.root, variable=check_var, command=self.toggle_entry_state)
@@ -567,11 +570,14 @@ class FittingTool:
             ttk.Label(self.root, text=label).grid(row=0, column=self.columnshift+2+i, sticky="NSEW")
             bg_entry = ttk.Entry(self.root, width=10)
             bg_entry.grid(row=1, column=self.columnshift+2+i, sticky="NSEW")
-            bg_entry.insert(0,0)
+            if i>2:
+                bg_entry.insert(0,'0c')
+            else:
+                bg_entry.insert(0,0)
             self.bg_entries.append(bg_entry)  
             
-        # ガウシアンのパラメータ
-        for i in range(10):  # 最大10個のガウシアン
+        # ピーク関数のパラメータ
+        for i in range(self.num_peak):  # 最大self.num_peak個のピーク
             row_entries = []
             # 各ガウシアンのエントリボックス (Area, Center, FWHM)
             for j in range(5):# peakの場合3つ、擬voigt関数の場合5つ
@@ -587,8 +593,8 @@ class FittingTool:
             bg_error_entry.grid(row=1, column=self.columnshift+7+i, sticky="NSEW")
             self.bg_errors.append(bg_error_entry)  
 
-        # ガウシアンのパラメータの誤差        
-        for i in range(10):  # 最大10個のガウシアン
+        # ピーク関数のパラメータの誤差        
+        for i in range(self.num_peak):  # 最大self.num_peak個のピーク
             row_errors = []
             # 各ガウシアンの誤差表示用エントリボックス (readonly)
             for j in range(5):
@@ -604,7 +610,7 @@ class FittingTool:
         
     def toggle_entry_state(self):
         """ チェックボックスの状態に応じてエントリの有効化・無効化 """
-        for i in range(10):
+        for i in range(self.num_peak):
             state = "normal" if self.checkboxes[i].get() else "readonly"
             for entry in self.entries[i]:
                 entry.config(state=state)
@@ -620,7 +626,7 @@ class FittingTool:
         model = bg_a + bg_b * x + bg_c * x**2 + bg_d * x**3 + bg_e * x**4
 
         # ガウシアン項とローレンチアン項
-        for i in range(10):
+        for i in range(self.num_peak):
             if self.checkboxes[i].get():  # チェックボックスがオンの場合
                 ratio_param = params[f'ratio_{i+1}']
                 ratio = ratio_param.value  # 比率パラメータの値
@@ -662,7 +668,7 @@ class FittingTool:
         
         # 各ピークに対するパラメータの取得とフィッティング
         peak_params = {}
-        for i in range(10):  # 最大10個のピークに対して
+        for i in range(self.num_peak):  # 最大self.num_peak個のピークに対して
             if self.checkboxes[i].get():  # チェックボックスがオンの場合のみ
                 ratio = self.entries[i][0].get()
                 area = self.entries[i][1].get()
@@ -723,7 +729,19 @@ class FittingTool:
         # ガウシアンのピークパラメータを追加
         for key, value in peak_params.items():
             pfit.add(key, value=value[0], vary=not value[1])
-
+        
+        # 追加されたパラメータの中で、最小値を設定
+        for param_name in pfit:
+            if "G_FWHM" in param_name:  # "G_FWHM"がパラメータ名に含まれている場合
+                pfit[param_name].min = 0.0  # 最小値を0に設定
+            if "L_FWHM" in param_name:  # "G_FWHM"がパラメータ名に含まれている場合
+                pfit[param_name].min = 0.0  # 最小値を0に設定
+            if "ratio" in param_name:  # "G_FWHM"がパラメータ名に含まれている場合
+                pfit[param_name].min = 0.0  # 最小値を0に設定
+                pfit[param_name].max = 1.0  # 最大値を1に設定
+            if "area" in param_name:  # "G_FWHM"がパラメータ名に含まれている場合
+                pfit[param_name].min = 0.0  # 最小値を0に設定
+        #print(pfit.pretty_print())
         # 最小化処理
         mini = Minimizer(self.residual, pfit, fcn_args=(x_data, y_data, y_error))
         self.result = mini.leastsq()
@@ -772,7 +790,7 @@ class FittingTool:
 
         # 各ピークのガウスフィットまたはローレンチアンフィット
         # ガウスフィットやローレンチアンフィットの条件分岐
-        for i in range(10):
+        for i in range(self.num_peak):
             if f'center_{i+1}' in result.params:
                 ratio = result.params.get(f'ratio_{i+1}', None)
                 amp = result.params[f'area_{i+1}'].value
@@ -876,8 +894,8 @@ class FittingTool:
         self.bg_errors[3].insert(0, f"{result.params['bg_d'].stderr:.4f}")
         self.bg_errors[4].insert(0, f"{result.params['bg_e'].stderr:.4f}")
 
-        # ガウシアンパラメータの結果を表示
-        for i in range(10):
+        # ピーク関数のパラメータの結果を表示
+        for i in range(self.num_peak):
             if self.checkboxes[i].get():
                 # 各ピークの結果をエントリに設定
                 ratio = result.params[f'ratio_{i+1}'].value
@@ -1066,7 +1084,7 @@ class FittingTool:
 
         # ピークの合計
         peak_sum = 0
-        for i in range(1, 11):  # 最大10個のピーク
+        for i in range(1, self.num_peak+1):  # 最大self.num_peak個のピーク
             ratio_key = f'ratio_{i}'
             area_key = f'area_{i}'
             center_key = f'center_{i}'
@@ -1105,7 +1123,7 @@ class FittingTool:
         各ピーク（ガウシアン、ローレンチアン、擬フォークト）曲線を計算する。
         """
         curves = []
-        for i in range(1, 11):  # 最大10個のピークを想定
+        for i in range(1, self.num_peak+1):  # 最大self.num_peak個のピークを想定
             ratio_key = f'ratio_{i}'
             area_key = f'area_{i}'
             center_key = f'center_{i}'
@@ -1155,7 +1173,7 @@ class FittingTool:
         bg_e = params['bg_e'].value
         peaks = []
 
-        for i in range(1, 11):  # 最大10個のガウシアンを想定
+        for i in range(1, self.num_peak+1):  # 最大self.num_peak個のガウシアンを想定
             ratio_key = f'ratio_{i}'
             area_key = f'area_{i}'
             center_key = f'center_{i}'
