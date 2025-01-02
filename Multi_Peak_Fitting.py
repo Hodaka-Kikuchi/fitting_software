@@ -571,10 +571,7 @@ class FittingTool:
             ttk.Label(self.root, text=label).grid(row=0, column=self.columnshift+2+i, sticky="NSEW")
             bg_entry = ttk.Entry(self.root, width=10)
             bg_entry.grid(row=1, column=self.columnshift+2+i, sticky="NSEW")
-            if i>1:
-                bg_entry.insert(0,'0c')
-            else:
-                bg_entry.insert(0,0)
+            bg_entry.insert(0,0)
             self.bg_entries.append(bg_entry)  
             
         # ピーク関数のパラメータ
@@ -618,9 +615,35 @@ class FittingTool:
         """すべてのエントリーボックスをクリアする"""
         for bg_entry in self.bg_entries:
             bg_entry.delete(0, tk.END) # 各エントリーボックスをクリア
+            bg_entry.insert(0,0)
+            
+        for bg_error_entry in self.bg_errors:
+            bg_error_entry.config(state="normal")
+            bg_error_entry.delete(0, tk.END) # 各エントリーボックスをクリア
+            bg_error_entry.config(state="readonly")
+            
         for row_entries in self.entries:
             for entry in row_entries:
-                entry.delete(0, tk.END) # 各エントリーボックスをクリア
+                # エントリーボックスの状態を取得
+                current_state = entry.cget("state")
+                # "readonly"状態の場合、"normal"に変更してから削除
+                if current_state == "readonly":
+                    entry.config(state="normal")
+                    entry.delete(0, tk.END)
+                    entry.config(state="readonly")  # 再び"readonly"に戻す
+                else:
+                    entry.delete(0, tk.END)
+                    
+        for row_errors in self.error_entries:
+            for entry in row_errors:
+                # "readonly"状態の場合、"normal"に変更してから削除
+                entry.config(state="normal")
+                entry.delete(0, tk.END)
+                entry.config(state="readonly")  # 再び"readonly"に戻す
+                
+        self.X2_entry[0].config(state="normal")  # 一時的に "normal" に変更
+        self.X2_entry[0].delete(0, tk.END)
+        self.X2_entry[0].config(state="readonly")
 
     def toggle_entry_state(self):
         """ チェックボックスの状態に応じてエントリの有効化・無効化 """
