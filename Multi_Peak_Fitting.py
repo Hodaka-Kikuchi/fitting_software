@@ -382,6 +382,12 @@ class FittingTool:
                     self.data_column_entry[1].insert(0, int(y_col+1))
                     self.data_column_entry[2].delete(0, tk.END)
                     self.data_column_entry[2].insert(0, int(err_col+1)) 
+                    
+                    # fitting領域を自動入力。初期値は全範囲
+                    self.fit_range_entries[0].delete(0, tk.END)
+                    self.fit_range_entries[0].insert(0, f"{np.min(self.x_data):.4f}")
+                    self.fit_range_entries[1].delete(0, tk.END)
+                    self.fit_range_entries[1].insert(0, f"{np.max(self.x_data):.4f}")
 
                     # 列選択ウィンドウを閉じる
                     column_selector.destroy()
