@@ -32,11 +32,12 @@ class FittingTool:
         logo_path = resource_path("logo.ico")
         self.root.iconbitmap(logo_path)
         
+        # 配置のgrid
         self.columnshift = 1+6
-        self.rowshift = 10+3 # self.rowshiftを増やす場合はself.num_peak+3の数値に書き換えること。ここでself.num_peakを定義することはできない
         # peakの個数を指定
         self.num_peak = 10
-        
+        self.rowshift = self.num_peak+3 # self.rowshiftを増やす場合はself.num_peak+3の数値に書き換えること。
+
         # グラフ表示用キャンバス
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvasTkAgg(self.figure, master=self.root)
