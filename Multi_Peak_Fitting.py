@@ -10,7 +10,7 @@ import sys
 import os
 import re
 
-__version__ = '1.4.2'
+__version__ = '1.4.3'
 
 class FittingTool:
     def __init__(self, root):
@@ -102,7 +102,10 @@ class FittingTool:
         self.fit_button.grid(row=2, column=self.columnshift+1, sticky="NSEW")
 
         # 保存ボタン
-        self.save_button = ttk.Button(self.root, text="Save CSV", command=self.save_fitting_results)
+        self.save_button = ttk.Button(self.root, text="Save CSV (Pure)", command=self.save_fitting_results0)
+        self.save_button.grid(row=0, column=self.columnshift-2, sticky="NSEW")
+        
+        self.save_button = ttk.Button(self.root, text="Save CSV (+BG)", command=self.save_fitting_results1)
         self.save_button.grid(row=0, column=self.columnshift-1, sticky="NSEW")
 
         # エントリーボックス作成 (フィッティング用のエントリ)
@@ -806,7 +809,14 @@ class FittingTool:
         y_min, y_max = self.ax.get_ylim()
         
         # fittingのデータを滑らかにする。
-        fit_x_data = np.arange(np.min(x_data), np.max(x_data), (np.max(x_data) - np.min(x_data))/(10*len(x_data)))
+        #fit_x_data = np.arange(np.min(x_data), np.max(x_data), (np.max(x_data) - np.min(x_data))/(10*len(x_data)))
+        
+        # 元データの増分を計算
+        original_increment = np.mean(np.diff(x_data))  # x_data の差分の平均
+        fit_x_increment = original_increment / 10  # 元データの増分の1/10
+
+        # fit_x_data を作成
+        fit_x_data = np.arange(np.min(x_data), np.max(x_data) + fit_x_increment, fit_x_increment)
         self.fit_x_data = fit_x_data
         
         self.ax.clear()
@@ -1008,7 +1018,7 @@ class FittingTool:
         for entry in self.bg_errors:
             entry.config(state="readonly")  # 誤差部分のみ readonly に戻す
     
-    def save_fitting_results(self):
+    def save_fitting_results0(self):
         """
         フィッティング結果とフィッティング曲線をCSVファイルに保存する。
         """
@@ -1034,7 +1044,99 @@ class FittingTool:
 
             # 各ガウシアン曲線の計算
             # peak_curves = self.calculate_peak_curves(x_fit, fit_params) # BG無
-            peak_curves = self.calculate_peak_and_BG_curves(x_fit, fit_params) # BG有
+            peak_curves = self.calculate_peak_and_BG_curves0(x_fit, fit_params) # BG無
+
+            # 保存ダイアログ
+            filename = filedialog.asksaveasfilename(defaultextension=".csv",
+                                                    filetypes=[("CSV files", "*.csv")])
+            if not filename:
+                return  # ファイル名が指定されなかった場合、処理を中断
+
+            with open(filename, mode='w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                
+                # χ²（カイ二乗）の値を書き込む
+                chi2_value = result.redchi  # χ²の値を取得
+                # Chi-squaredとパラメータ用のデータを準備
+                param_rows = [['Chi-squared', chi2_value, '']]
+                #param_rows.append(['Parameter', 'Value', 'Error'])
+                for param_name, param in fit_params.items():
+                    param_rows.append([param_name, param.value, param.stderr])
+                    
+                # パラメータ名リストを用意（例として fit_params のキーを使用）
+                param_names = fit_params.keys()
+                
+                # ピーク番号を抽出（"peak_" または数字を含む名前を対象）
+                peak_numbers = sorted(
+                    set(
+                        int(match.group(1))
+                        for name in param_names
+                        if (match := re.search(r'_(\d+)', name))
+                    )
+                )
+
+                # データ列の準備
+                data_headers = ['','x_data', 'y_data', 'yerr_data', 'x_fit', 'y_fit', 'y_bg']  # 空列を追加
+                #data_headers += [f'peak_{i + 1}' for i in range(len(peak_curves))]
+                data_headers += [f'peak_{num}' for num in peak_numbers] #番号をチェックボックス番号とそろえる。
+
+                # 各データ列を同じ長さにするため調整
+                max_length = max(len(x_data), len(x_fit))
+                x_data = list(x_data) + [""] * (max_length - len(x_data))
+                y_data = list(y_data) + [""] * (max_length - len(y_data))
+                yerr_data = list(yerr_data) + [""] * (max_length - len(yerr_data))
+                x_fit = list(x_fit) + [""] * (max_length - len(x_fit))
+                y_fit = list(y_fit) + [""] * (max_length - len(y_fit))
+                y_bg = list(y_bg) + [""] * (max_length - len(y_bg))
+                peak_curves = [list(peak) + [""] * (max_length - len(peak)) for peak in peak_curves]
+
+                # データ列を行ごとにまとめる
+                data_rows = list(zip(x_data, y_data, yerr_data, x_fit, y_fit, y_bg, *peak_curves))
+
+                # ヘッダー行を作成
+                header_row = ['Parameter', 'Value', 'Error'] + data_headers
+
+                # ヘッダー行を書き込み
+                writer.writerow(header_row)
+
+                # パラメータ行とデータ行を列方向に統合して書き込み
+                for i in range(max(max_length, len(param_rows))):
+                    param_part = param_rows[i] if i < len(param_rows) else [""] * 3
+                    data_part = list(data_rows[i]) if i < len(data_rows) else [""] * len(data_headers)
+                    writer.writerow(param_part + [""] + data_part)  # 空列を追加
+                
+            messagebox.showinfo("Save Complete", "Fitting results and curves have been saved.")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while saving.: {e}")
+    
+    def save_fitting_results1(self):
+        """
+        フィッティング結果とフィッティング曲線をCSVファイルに保存する。
+        """
+        try:
+            # フィッティング結果が存在するか確認
+            if not hasattr(self, 'result'):
+                raise AttributeError("Fitting results do not exist. Please perform fitting first.")
+
+            result = self.result
+            fit_params = result.params
+
+            # 元データ
+            x_data = self.x_data
+            y_data = self.y_data
+            yerr_data = self.y_error
+            x_fit = self.fit_x_data
+
+            # フィッティング曲線の計算
+            y_fit = self.calculate_fit_curve(x_fit, fit_params)
+
+            # バックグラウンド曲線の計算
+            y_bg = self.calculate_background_curve(x_fit, fit_params)
+
+            # 各ガウシアン曲線の計算
+            # peak_curves = self.calculate_peak_curves(x_fit, fit_params) # BG無
+            peak_curves = self.calculate_peak_and_BG_curves1(x_fit, fit_params) # BG有
 
             # 保存ダイアログ
             filename = filedialog.asksaveasfilename(defaultextension=".csv",
@@ -1212,7 +1314,58 @@ class FittingTool:
 
         return curves
 
-    def calculate_peak_and_BG_curves(self, x_data, params):
+    def calculate_peak_and_BG_curves0(self, x_data, params):
+        bg_a = params['bg_a'].value
+        bg_b = params['bg_b'].value
+        bg_c = params['bg_c'].value
+        bg_d = params['bg_d'].value
+        bg_e = params['bg_e'].value
+        peaks = []
+
+        for i in range(1, self.num_peak+1):  # 最大self.num_peak個のガウシアンを想定
+            ratio_key = f'ratio_{i}'
+            area_key = f'area_{i}'
+            center_key = f'center_{i}'
+            G_FWHM_key = f'G_FWHM_{i}'
+            L_FWHM_key = f'L_FWHM_{i}'
+
+            # 必要なパラメータがparamsに存在するか確認
+            if ratio_key in params and area_key in params and center_key in params:
+                ratio = params[ratio_key].value
+                amplitude = params[area_key].value
+                center = params[center_key].value
+
+                # G_FWHMとL_FWHMが存在する場合のみ、それぞれの値を取得
+                Gwidth = params[G_FWHM_key].value if G_FWHM_key in params else None
+                Lwidth = params[L_FWHM_key].value if L_FWHM_key in params else None
+
+                # ガウシアン部分の計算
+                if Gwidth is not None and Lwidth is not None:
+                    # 擬フォークト関数
+                    peak = [
+                        ratio * amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / (Gwidth * (np.pi / (4 * np.log(2)))**(1 / 2)) +
+                        (1 - ratio) * amplitude * 2 / np.pi * Lwidth / (4 * (x - center)**2 + Lwidth**2) for x in x_data
+                    ]
+                elif Gwidth is not None:
+                    # ガウシアンのみ
+                    peak = [
+                        amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / (Gwidth * (np.pi / (4 * np.log(2)))**(1 / 2)) for x in x_data
+                    ]
+                elif Lwidth is not None:
+                    # ローレンチアンのみ
+                    peak = [
+                        amplitude * 2 / np.pi * Lwidth / (4 * (x - center)**2 + Lwidth**2) for x in x_data
+                    ]
+                else:
+                    # G_FWHMもL_FWHMも存在しない場合は空リストを追加
+                    peak = []
+
+                # ガウシアンをリストに追加
+                peaks.append(peak)
+
+        return peaks
+    
+    def calculate_peak_and_BG_curves1(self, x_data, params):
         bg_a = params['bg_a'].value
         bg_b = params['bg_b'].value
         bg_c = params['bg_c'].value
@@ -1266,7 +1419,6 @@ class FittingTool:
 
         return peaks
 
-    
 if __name__ == "__main__":
     root = tk.Tk()
     app = FittingTool(root)
