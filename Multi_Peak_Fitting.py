@@ -193,7 +193,7 @@ class FittingTool:
 
         try:
             # CSVファイルを読み込む
-            with open(file_path, 'r', newline='') as f:
+            with open(file_path, 'r', newline='', encoding='utf-8') as f:
                 reader = csv.reader(f)
                 view_data = list(reader)
 
@@ -270,7 +270,7 @@ class FittingTool:
 
         try:
             # CSVファイルを読み込む
-            with open(file_path, 'r', newline='') as f:
+            with open(file_path, 'r', newline='', encoding='utf-8') as f:
                 reader = csv.reader(f)
                 view_data = list(reader)
 
@@ -409,7 +409,7 @@ class FittingTool:
 
         try:
             # CSVファイルを読み込む
-            with open(file_path, 'r', newline='') as f:
+            with open(file_path, 'r', newline='', encoding='utf-8') as f:
                 reader = csv.reader(f)
                 view_data = list(reader)
 
@@ -693,7 +693,7 @@ class FittingTool:
         bg_d = self.bg_entries[3].get()
         bg_e = self.bg_entries[4].get()
 
-        # バックグラウンドパラメータの 'c' を取り除く処理
+        # バックグラウンドパラメータの 'f' を取り除く処理
         bg_a_value, bg_a_fixed = self.process_param(bg_a)
         bg_b_value, bg_b_fixed = self.process_param(bg_b)
         bg_c_value, bg_c_fixed = self.process_param(bg_c)
@@ -707,11 +707,11 @@ class FittingTool:
                 ratio = self.entries[i][0].get()
                 area = self.entries[i][1].get()
                 center = self.entries[i][2].get()
-                # 'c'がついている場合、'c'を取り除いて数値として設定
+                # 'f'がついている場合、'f'を取り除いて数値として設定
                 ratio_value, ratio_fixed = self.process_param(ratio)
                 center_value, center_fixed = self.process_param(center)
                 area_value, area_fixed = self.process_param(area)
-                # 'c'がついている場合、固定する処理を追加
+                # 'f'がついている場合、固定する処理を追加
                 peak_params[f'ratio_{i+1}'] = (ratio_value, ratio_fixed)
                 peak_params[f'center_{i+1}'] = (center_value, center_fixed)
                 peak_params[f'area_{i+1}'] = (area_value, area_fixed)
@@ -793,9 +793,9 @@ class FittingTool:
             self.plot_fitted_curve(x_data, self.result)
 
     def process_param(self, param):
-        """パラメータの 'c' を処理する関数"""
-        if isinstance(param, str) and param.endswith("c"):
-            value = float(param[:-1])  # 'c'を取り除いて値を設定
+        """パラメータの 'f' を処理する関数"""
+        if isinstance(param, str) and param.endswith("f"):
+            value = float(param[:-1])  # 'f'を取り除いて値を設定
             return value, True  # 固定値として設定
         else:
             return float(param), False  # 固定しない値として設定
@@ -908,11 +908,11 @@ class FittingTool:
         self.bg_entries[2].delete(0, tk.END)
         self.bg_entries[3].delete(0, tk.END)
         self.bg_entries[4].delete(0, tk.END)
-        self.bg_entries[0].insert(0, f"{result.params['bg_a'].value:.4f}"+ ('c' if bg_a_fixed else ''))
-        self.bg_entries[1].insert(0, f"{result.params['bg_b'].value:.4f}"+ ('c' if bg_b_fixed else ''))
-        self.bg_entries[2].insert(0, f"{result.params['bg_c'].value:.4f}"+ ('c' if bg_c_fixed else ''))
-        self.bg_entries[3].insert(0, f"{result.params['bg_d'].value:.4f}"+ ('c' if bg_d_fixed else ''))
-        self.bg_entries[4].insert(0, f"{result.params['bg_e'].value:.4f}"+ ('c' if bg_e_fixed else ''))
+        self.bg_entries[0].insert(0, f"{result.params['bg_a'].value:.4f}"+ ('f' if bg_a_fixed else ''))
+        self.bg_entries[1].insert(0, f"{result.params['bg_b'].value:.4f}"+ ('f' if bg_b_fixed else ''))
+        self.bg_entries[2].insert(0, f"{result.params['bg_c'].value:.4f}"+ ('f' if bg_c_fixed else ''))
+        self.bg_entries[3].insert(0, f"{result.params['bg_d'].value:.4f}"+ ('f' if bg_d_fixed else ''))
+        self.bg_entries[4].insert(0, f"{result.params['bg_e'].value:.4f}"+ ('f' if bg_e_fixed else ''))
 
         # 誤差の表示（readonlyに設定）
         for entry in self.bg_errors:
@@ -941,14 +941,14 @@ class FittingTool:
                 ratio_param = result.params[f'ratio_{i+1}']
                 ratio_fixed = not ratio_param.vary  # 固定されているかどうか
                 
-                # cが付いている場合、末尾に 'c' を追加して表示
+                # cが付いている場合、末尾に 'f' を追加して表示
                 ratio_value, ratio_fixed = peak_params[f'ratio_{i+1}']
                 area_value, area_fixed = peak_params[f'area_{i+1}']
                 center_value, center_fixed = peak_params[f'center_{i+1}']
-                # 'c'が付いている場合、末尾に 'c' を追加して表示
-                ratio_str = f"{ratio:.4f}" + ('c' if ratio_fixed else '')
-                area_str = f"{amp:.4f}" + ('c' if area_fixed else '')
-                center_str = f"{cen:.4f}" + ('c' if center_fixed else '')
+                # 'f'が付いている場合、末尾に 'f' を追加して表示
+                ratio_str = f"{ratio:.4f}" + ('f' if ratio_fixed else '')
+                area_str = f"{amp:.4f}" + ('f' if area_fixed else '')
+                center_str = f"{cen:.4f}" + ('f' if center_fixed else '')
                 # 結果をエントリに設定
                 for entry in self.entries[i]:
                     entry.config(state="normal")  # 一時的に "normal" に変更
@@ -977,13 +977,13 @@ class FittingTool:
                     if ratio == 1:  # ガウシアンのみ
                         Gwid = result.params[f'G_FWHM_{i+1}'].value
                         G_FWHM_value, G_FWHM_fixed = peak_params[f'G_FWHM_{i+1}']
-                        G_FWHM_str = f"{Gwid:.4f}" + ('c' if G_FWHM_fixed else '')
+                        G_FWHM_str = f"{Gwid:.4f}" + ('f' if G_FWHM_fixed else '')
                         self.entries[i][3].insert(0, G_FWHM_str)
                         self.error_entries[i][3].insert(0, f"{result.params[f'G_FWHM_{i+1}'].stderr:.4f}")
                     elif ratio == 0:  # ローレンチアンのみ
                         Lwid = result.params[f'L_FWHM_{i+1}'].value
                         L_FWHM_value, L_FWHM_fixed = peak_params[f'L_FWHM_{i+1}']
-                        L_FWHM_str = f"{Lwid:.4f}" + ('c' if L_FWHM_fixed else '')
+                        L_FWHM_str = f"{Lwid:.4f}" + ('f' if L_FWHM_fixed else '')
                         self.entries[i][4].insert(0, L_FWHM_str)
                         self.error_entries[i][4].insert(0, f"{result.params[f'L_FWHM_{i+1}'].stderr:.4f}")
                 else:  # 可変値の場合
@@ -991,8 +991,8 @@ class FittingTool:
                     Lwid = result.params[f'L_FWHM_{i+1}'].value
                     G_FWHM_value, G_FWHM_fixed = peak_params[f'G_FWHM_{i+1}']
                     L_FWHM_value, L_FWHM_fixed = peak_params[f'L_FWHM_{i+1}']
-                    G_FWHM_str = f"{Gwid:.4f}" + ('c' if G_FWHM_fixed else '')
-                    L_FWHM_str = f"{Lwid:.4f}" + ('c' if L_FWHM_fixed else '')
+                    G_FWHM_str = f"{Gwid:.4f}" + ('f' if G_FWHM_fixed else '')
+                    L_FWHM_str = f"{Lwid:.4f}" + ('f' if L_FWHM_fixed else '')
                     self.entries[i][3].insert(0, G_FWHM_str)
                     self.entries[i][4].insert(0, L_FWHM_str)
                     self.error_entries[i][3].insert(0, f"{result.params[f'G_FWHM_{i+1}'].stderr:.4f}")
@@ -1042,7 +1042,7 @@ class FittingTool:
             if not filename:
                 return  # ファイル名が指定されなかった場合、処理を中断
 
-            with open(filename, mode='w', newline='') as csvfile:
+            with open(filename, mode='w', newline='', encoding='utf-8') as csvfile:
                 writer = csv.writer(csvfile)
                 
                 # χ²（カイ二乗）の値を書き込む
