@@ -13,7 +13,7 @@ from scipy.special import wofz
 
 # cd C:\DATA_HK\python\fitting_software
 
-__version__ = '1.5.0'
+__version__ = '1.5.1'
 
 class FittingTool:
     def __init__(self, root):
@@ -662,6 +662,14 @@ class FittingTool:
             for entry in self.entries[i]:
                 entry.config(state=state)
     
+    # voigt関数の定義
+    def voigt(self, x, center, amplitude, fwhm_g, fwhm_l):
+        """FWHM から計算する Voigt 関数"""
+        sigma = fwhm_g / (2 * np.sqrt(2 * np.log(2)))  # ガウシアンの標準偏差
+        gamma = fwhm_l / 2                             # ローレンチアンの半値半幅
+        z = ((x - center) + 1j * gamma) / (sigma * np.sqrt(2))
+        return amplitude * np.real(wofz(z)) / (sigma * np.sqrt(2 * np.pi))
+    
     def residual(self, params, x, y, y_err):
         """ フィット関数の残差計算 """
         # バックグラウンド項
@@ -671,13 +679,6 @@ class FittingTool:
         bg_d = params['bg_d']
         bg_e = params['bg_e']
         model = bg_a + bg_b * x + bg_c * x**2 + bg_d * x**3 + bg_e * x**4
-        
-        def voigt(x, center, amplitude, fwhm_g, fwhm_l):
-            """FWHM から計算する Voigt 関数"""
-            sigma = fwhm_g / (2 * np.sqrt(2 * np.log(2)))  # ガウシアンの標準偏差
-            gamma = fwhm_l / 2                             # ローレンチアンの半値半幅
-            z = ((x - center) + 1j * gamma) / (sigma * np.sqrt(2))
-            return amplitude * np.real(wofz(z)) / (sigma * np.sqrt(2 * np.pi))
 
         # ガウシアン項とローレンチアン項
         for i in range(self.num_peak):
@@ -698,7 +699,7 @@ class FittingTool:
                     elif ratio == -1: # voigt関数
                         Gwid = params[f'G_FWHM_{i+1}'].value
                         Lwid = params[f'L_FWHM_{i+1}'].value
-                        model += voigt(x, cen, amp, Gwid, Lwid)
+                        model += self.voigt(x, cen, amp, Gwid, Lwid)
                 else:  # 可変値の場合
                     # 擬フォークト関数
                     Gwid = params[f'G_FWHM_{i+1}'].value
@@ -865,14 +866,6 @@ class FittingTool:
         # バックグラウンド関数を破線でプロット
         self.ax.plot(fit_x_data, y_fit, 'r--', label="Background fit", color='yellow')
         
-        # voigt関数の定義
-        def voigt(x, center, amplitude, fwhm_g, fwhm_l):
-            """FWHM から計算する Voigt 関数"""
-            sigma = fwhm_g / (2 * np.sqrt(2 * np.log(2)))  # ガウシアンの標準偏差
-            gamma = fwhm_l / 2                             # ローレンチアンの半値半幅
-            z = ((x - center) + 1j * gamma) / (sigma * np.sqrt(2))
-            return amplitude * np.real(wofz(z)) / (sigma * np.sqrt(2 * np.pi))
-
         # 各ピークのガウスフィットまたはローレンチアンフィット
         # ガウスフィットやローレンチアンフィットの条件分岐
         for i in range(self.num_peak):
@@ -889,7 +882,7 @@ class FittingTool:
 
                 # ピークフィット関数の計算
                 if ratio is not None and ratio.value == -1 and Gwid is not None and Lwid is not None:  # ratioが-1の場合はVoigt関数
-                    peak_y = voigt(fit_x_data, cen, amp, Gwid.value, Lwid.value)
+                    peak_y = self.voigt(fit_x_data, cen, amp, Gwid.value, Lwid.value)
                 elif Gwid is not None and Lwid is not None:  # 両方存在する場合は擬フォークト関数
                     ratio = ratio.value  # ratioがNoneでなく、かつTrueの場合に値を設定
                     peak_y = (ratio * amp * np.exp(-4 * np.log(2) * ((fit_x_data - cen) / Gwid.value)**2) / 
@@ -1290,14 +1283,6 @@ class FittingTool:
         bg_d = params['bg_d'].value
         bg_e = params['bg_e'].value
         background = bg_a + bg_b * x + bg_c * (x**2) + bg_d * (x**3) + bg_e * (x**4)
-        
-        # voigt関数の定義
-        def voigt(x, center, amplitude, fwhm_g, fwhm_l):
-            """FWHM から計算する Voigt 関数"""
-            sigma = fwhm_g / (2 * np.sqrt(2 * np.log(2)))  # ガウシアンの標準偏差
-            gamma = fwhm_l / 2                             # ローレンチアンの半値半幅
-            z = ((x - center) + 1j * gamma) / (sigma * np.sqrt(2))
-            return amplitude * np.real(wofz(z)) / (sigma * np.sqrt(2 * np.pi))
 
         # ピークの合計
         peak_sum = 0
@@ -1318,7 +1303,7 @@ class FittingTool:
 
                 # 条件分岐による関数選択
                 if ratio is not None and ratio == -1:  # ratioが-1の場合はVoigt関数
-                    peak = voigt(x, center, amplitude, Gwidth, Lwidth)
+                    peak = self.voigt(x, center, amplitude, Gwidth, Lwidth)
                 elif Gwidth is not None and Lwidth is not None:  # 擬フォークト関数
                     peak = (ratio * amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / 
                             (Gwidth * (np.pi / (4 * np.log(2)))**0.5) +
@@ -1341,13 +1326,6 @@ class FittingTool:
         """
         各ピーク（ガウシアン、ローレンチアン、擬フォークト）曲線を計算する。
         """
-        # voigt関数の定義
-        def voigt(x, center, amplitude, fwhm_g, fwhm_l):
-            """FWHM から計算する Voigt 関数"""
-            sigma = fwhm_g / (2 * np.sqrt(2 * np.log(2)))  # ガウシアンの標準偏差
-            gamma = fwhm_l / 2                             # ローレンチアンの半値半幅
-            z = ((x - center) + 1j * gamma) / (sigma * np.sqrt(2))
-            return amplitude * np.real(wofz(z)) / (sigma * np.sqrt(2 * np.pi))
         
         curves = []
         for i in range(1, self.num_peak+1):  # 最大self.num_peak個のピークを想定
@@ -1366,7 +1344,7 @@ class FittingTool:
 
                 # 条件分岐で関数選択
                 if ratio is not None and ratio == -1:  # ratioが-1の場合はVoigt関数
-                    curve = voigt(x_data, center, amplitude, Gwidth, Lwidth)
+                    curve = self.voigt(x_data, center, amplitude, Gwidth, Lwidth)
                 elif Gwidth is not None and Lwidth is not None:  # 擬フォークト関数
                     curve = [
                         ratio * amplitude * np.exp(-4 * np.log(2) * ((x - center) / Gwidth)**2) / 
@@ -1401,14 +1379,6 @@ class FittingTool:
         bg_d = params['bg_d'].value
         bg_e = params['bg_e'].value
         peaks = []
-        
-        # voigt関数の定義
-        def voigt(x, center, amplitude, fwhm_g, fwhm_l):
-            """FWHM から計算する Voigt 関数"""
-            sigma = fwhm_g / (2 * np.sqrt(2 * np.log(2)))  # ガウシアンの標準偏差
-            gamma = fwhm_l / 2                             # ローレンチアンの半値半幅
-            z = ((x - center) + 1j * gamma) / (sigma * np.sqrt(2))
-            return amplitude * np.real(wofz(z)) / (sigma * np.sqrt(2 * np.pi))
 
         for i in range(1, self.num_peak+1):  # 最大self.num_peak個のガウシアンを想定
             ratio_key = f'ratio_{i}'
@@ -1428,7 +1398,7 @@ class FittingTool:
                 Lwidth = params[L_FWHM_key].value if L_FWHM_key in params else None
 
                 if ratio is not None and ratio == -1:  # ratioが-1の場合はVoigt関数
-                    peak = voigt(x_data, center, amplitude, Gwidth, Lwidth)
+                    peak = self.voigt(x_data, center, amplitude, Gwidth, Lwidth)
                 elif Gwidth is not None and Lwidth is not None:
                     # 擬フォークト関数の計算
                     peak = [
@@ -1461,14 +1431,6 @@ class FittingTool:
         bg_d = params['bg_d'].value
         bg_e = params['bg_e'].value
         peaks = []
-        
-        # voigt関数の定義
-        def voigt(x, center, amplitude, fwhm_g, fwhm_l):
-            """FWHM から計算する Voigt 関数"""
-            sigma = fwhm_g / (2 * np.sqrt(2 * np.log(2)))  # ガウシアンの標準偏差
-            gamma = fwhm_l / 2                             # ローレンチアンの半値半幅
-            z = ((x - center) + 1j * gamma) / (sigma * np.sqrt(2))
-            return amplitude * np.real(wofz(z)) / (sigma * np.sqrt(2 * np.pi))
 
         for i in range(1, self.num_peak+1):  # 最大self.num_peak個のガウシアンを想定
             ratio_key = f'ratio_{i}'
@@ -1488,7 +1450,7 @@ class FittingTool:
                 Lwidth = params[L_FWHM_key].value if L_FWHM_key in params else None
 
                 if ratio is not None and ratio == -1:  # ratioが-1の場合はVoigt関数
-                    peak_func = voigt(x_data, center, amplitude, Gwidth, Lwidth)
+                    peak_func = self.voigt(x_data, center, amplitude, Gwidth, Lwidth)
                     BG_func = [bg_a + bg_b * x + bg_c * (x**2) + bg_d * (x**3) + bg_e * (x**4) for x in x_data]
                     peak = peak_func + BG_func
                 elif Gwidth is not None and Lwidth is not None:

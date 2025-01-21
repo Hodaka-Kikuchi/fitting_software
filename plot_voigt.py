@@ -26,13 +26,16 @@ amp=50
 # 同じ長さで、範囲[0, 1]のランダムな数値を生成
 random_values = np.random.uniform(low=10, high=amp/3, size=len(x))
 
-FWHM_G =  0.35 / (2 * np.sqrt(2 * np.log(2))) 
-FWHM_L =  0.5 / 2
+FWHM_G =  0.35
+FWHM_L =  0.5
+
+sigma_G = FWHM_G / (2 * np.sqrt(2 * np.log(2))) 
+sigma_L = FWHM_L / 2
 
 print(FWHM_G,FWHM_L)
 
-y0 = voigt(x,[amp,2,FWHM_G,FWHM_L])+voigt(x,[amp/2,3,FWHM_G,FWHM_L])+voigt(x,[amp*3,4,FWHM_G,FWHM_L])+random_values
-#y0 = voigt(x,[amp,2,FWHM_G,FWHM_L])+random_values
+#y0 = voigt(x,[amp,2,sigma_G,sigma_L])+voigt(x,[amp/2,3,sigma_G,sigma_L])+voigt(x,[amp*3,4,sigma_G,sigma_L])+random_values
+y0 = voigt(x,[amp,2,sigma_G,sigma_L])
 ye = np.sqrt(y0)
 plt.plot(x, y0, 'k-', label ='FWHM_G = %.3f , FWHM_L = %.3f '  %(FWHM_G, FWHM_L))
 """
