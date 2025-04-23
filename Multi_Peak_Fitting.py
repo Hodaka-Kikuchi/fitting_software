@@ -13,7 +13,7 @@ from scipy.special import wofz
 
 # cd C:\DATA_HK\python\fitting_software
 
-__version__ = '1.5.1'
+__version__ = '1.5.2'
 
 class FittingTool:
     def __init__(self, root):
@@ -616,7 +616,7 @@ class FittingTool:
         # tipsを最初から表示しておく
         tips_text1 = 'Ratio = 1f : Gaussian, Ratio = 0f : Lorentzian'
         self.tips1 = ttk.Label(self.root, text=tips_text1).grid(row=2+self.num_peak+1, column=self.columnshift+1+1+5+1, columnspan = 5, sticky="NSEW")
-        tips_text2 = 'Ratio = -1f : Voigt, Ratio = free : Pseudo Voigt'
+        tips_text2 = 'Ratio = -1f : Pseudo Voigt, Ratio = free : Voigt'
         self.tips2 = ttk.Label(self.root, text=tips_text2).grid(row=2+self.num_peak+2, column=self.columnshift+1+1+5+1, columnspan = 5, sticky="NSEW")
         
     # clear ボタン
