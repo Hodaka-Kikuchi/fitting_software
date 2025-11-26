@@ -1,0 +1,6 @@
+dist/
+build/
+__pycache__/
+test_code/
+design/
+test_data_set/
