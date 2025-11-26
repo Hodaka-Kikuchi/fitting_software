@@ -13,7 +13,7 @@ from scipy.special import wofz
 
 # cd C:\DATA_HK\python\fitting_software
 
-__version__ = '1.5.2'
+__version__ = '1.5.3'
 
 class FittingTool:
     def __init__(self, root):
